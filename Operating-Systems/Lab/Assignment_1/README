@@ -1,0 +1,25 @@
+Write a shell script, mySysInfo.sh, to list out your system specs and state. The script should be run on each of the VMs mentioned above and output the following info in a readable format.
+
+    1. System Name, IP Address and Date
+    
+    2. System uptime
+        Operating system
+    
+    3. Hardware configurations
+    
+    4. CPU  type and Number of cores
+    
+    5. Main Memory Size
+    
+    6. Hard disk size
+        Total Number of partitions and their size
+        Disk used
+        Free space in Disk
+
+    7. Instantaneous RAM and CPU usages/loads
+    
+    8. Total number of  jobs running in the system
+        No. of jobs running in kernel space
+        Number of jobs running in user space
+
+    9. List of user accounts and List of users currently logged in.
