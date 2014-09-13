@@ -361,10 +361,54 @@ void print_set(set s)
 			cout<<i<<endl;
 }
 
+void check_arguments(int args)
+{
+    if(args<2)
+    {
+        cout<<"Enter the range (\"start-end\"): ";
+        string range;
+        cin>>range;
+
+        parse_range((char*)range.c_str());
+        args++;
+    }
+
+    if(args<3)
+    {
+        cout<<"Enter the opration: ";
+        string op;
+        cin>>op;
+        parse_operation((char*)op.c_str());
+        args++;
+    }
+
+    if(args<4)
+    {
+        cout<<"Enter the first input file: ";
+        cin>>input_file_name1;
+        args++;
+    }
+
+    if(args<5)
+    {
+        cout<<"Enter the second input file: ";
+        cin>>input_file_name2;
+        args++;
+    }
+
+    if(args<6)
+    {
+        cout<<"Enter the output file: ";
+        cin>>output_file_name;
+    }
+}
+
 int main(int args, char **argc)
 {
 	/* Parse command line arguments. */
     parse_arguments(args, argc);
+
+    check_arguments(args);
 
     set a, b;
 	int len = range_end-range_start+1;
