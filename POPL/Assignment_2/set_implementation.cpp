@@ -36,12 +36,6 @@ class set
 			/* Initializing the array. */
 			for(int i=0; i<len; i++)
 				bit_set.push_back(false);
-
-            cout<<range_end<<" "<<range_start<<" "<<len<<endl;
-            for(int i=0; i<len; i++)
-                cout<<bit_set[i]<<" ";
-            cout<<endl;
-
 		}
 
 		/*
@@ -181,7 +175,7 @@ void parse_range(char *range)
 	i++;
 
 	/* parsing the end of the range. */
-	while(i<len && range[i]!='-')
+	while(i<len)
 	{
 		/* if it contains invalid characters. */
 		if(!(range[i]>='0' && range[i]<='9'))
@@ -219,7 +213,7 @@ void parse_operation(char *op)
 	/* changing the upper case characters to lower case to support case-insensitiveness. */
 	for(int i=0; i<len; i++)
 	{
-		if(!(op[i]>='a' && op[i]<='z'))
+		if((!(op[i]>='a' && op[i]<='z')) && op[i]!='_')
 			op[i] = op[i]^' ';
 	}
 
@@ -230,8 +224,8 @@ void parse_operation(char *op)
 		operation = 2;
 	else if(strcmp(op, "difference")==0)
 		operation = 3;
-	else if(strcmp(op, "symmetric difference")==0)
-		operation = 2;
+	else if(strcmp(op, "sym_difference")==0)
+		operation = 4;
 	else
 	{
 		/* No valid operation found. */
@@ -403,6 +397,22 @@ void check_arguments(int args)
     }
 }
 
+set set_operation(set a, set b)
+{
+    set c;
+    if(operation==1)
+        c = a.set_union(b);
+    else if(operation==2)
+        c = a.set_intersection(b);
+    else if(operation==3)
+        c = a.set_difference(b);
+    else
+        c = a.set_set_difference(b);
+
+    return c;
+
+}
+
 int main(int args, char **argc)
 {
 	/* Parse command line arguments. */
@@ -417,7 +427,7 @@ int main(int args, char **argc)
     create_set(input_file_name1, &a);
     create_set(input_file_name2, &b);
 
-    set c = a.set_union(b);
+    set c = set_operation(a, b);
     write_set(output_file_name, c);
 
     return 0;
