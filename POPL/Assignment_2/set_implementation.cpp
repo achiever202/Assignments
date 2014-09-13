@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <vector>
 
 using namespace std;
 
@@ -17,25 +18,29 @@ string output_file_name = "";
 
 /*
  * This class implements the mathematical set structure for integers.
- * @data-member index_range: a boolean array, that stores the presence of a number in a set.
+ * @data-member bit_set: a boolean array, that stores the presence of a number in a set.
  * @data-member len: stores the length of range.
  * @method: contains(), add(), remove().
  */
 class set
 {
-	bool *index_range;
+	vector<bool>bit_set;
 	int len;
 
 	public:
 		set()	/* constructor for the class. */
 		{
 			/* Allocating memory for the boolean array. */
-			index_range = (bool*) malloc((range_end-range_start+1)*sizeof(bool));
 			len = range_end-range_start+1;
 
 			/* Initializing the array. */
 			for(int i=0; i<len; i++)
-				index_range[i] = (bool)false;
+				bit_set.push_back(false);
+
+            cout<<range_end<<" "<<range_start<<" "<<len<<endl;
+            for(int i=0; i<len; i++)
+                cout<<bit_set[i]<<" ";
+            cout<<endl;
 
 		}
 
@@ -46,7 +51,7 @@ class set
 		 */
 		bool contains(int n)
 		{
-			return index_range[n-range_start];
+			return bit_set[n-range_start];
 		}
 
 		/*
@@ -59,7 +64,7 @@ class set
 			if(contains(n))
 				return false;
 
-			index_range[n-range_start] = true;
+			bit_set[n-range_start].flip();
 			return true;
 		}
 
@@ -73,7 +78,7 @@ class set
 			if(!contains(n))
 				return false;
 
-			index_range[n-range_start] = false;
+			bit_set[n-range_start].flip();
 			return true;
 		}
 
@@ -81,11 +86,11 @@ class set
 		 * This function takes the union of a set with the current set.
 		 * @param b: the set with which the union operation is to be done.
 		 * @return c: the set formed after the union operation.
-		 */ 
+		 */
 		set set_union(set b)
 		{
 			set c;
-			
+
 			/* for each number in range check if it is present in b or in current set, then add. */
 			for(int i=range_start; i<=range_end; i++)
 			{
@@ -100,11 +105,11 @@ class set
 		 * This function takes the intersection of a set with the current set.
 		 * @param b: the set with which the intersection operation is to be done.
 		 * @return c: the set formed after the intersection operation.
-		 */ 
+		 */
 		set set_intersection(set b)
 		{
 			set c;
-			
+
 			/* for each number in range check if it is present in b and and in the current set, then add. */
 			for(int i=range_start; i<=range_end; i++)
 			{
@@ -119,7 +124,7 @@ class set
 		 * This function takes the difference of a set with the current set (A-B).
 		 * @param b: the set with which the difference operation is to be done (B).
 		 * @return c: the set formed after the difference operation (A-B).
-		 */ 
+		 */
 		set set_difference(set b)
 		{
 			set c;
@@ -136,7 +141,7 @@ class set
 		 * This function takes the set difference of two sets.
 		 * @param b: the set with which the set difference operation is to be done.
 		 * @return c: the set formed after the set difference operation.
-		 */ 
+		 */
 		set set_set_difference(set b)
 		{
 			/*
@@ -146,12 +151,6 @@ class set
 			 */
 			return set_difference(b).set_union(b.set_difference(*this));
 		}
-
-		/*~set()
-		{
-			delete[] index_range;
-			index_range = NULL;
-		}*/
 };
 
 /*
@@ -364,11 +363,11 @@ void print_set(set s)
 
 int main(int args, char **argc)
 {
-	set a, b;
-	int len = range_end-range_start+1;
-
 	/* Parse command line arguments. */
     parse_arguments(args, argc);
+
+    set a, b;
+	int len = range_end-range_start+1;
 
     /* creating sets from file. */
     create_set(input_file_name1, &a);
