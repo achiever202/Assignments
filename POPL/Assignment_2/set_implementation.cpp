@@ -12,15 +12,15 @@ int range_end = 0;
 int operation = 0;
 
 /* Filename for input and output. */
-string input_file_name1 = "";
-string input_file_name2 = "";
-string output_file_name = "";
+string input_file1 = "";
+string input_file2 = "";
+string output_file = "";
 
 /*
  * This class implements the mathematical set structure for integers.
- * @data-member bit_set: a boolean array, that stores the presence of a number in a set.
+ * @data-member bit_set: a boolean vector, that stores the presence of a number in a set.
  * @data-member len: stores the length of range.
- * @method: contains(), add(), remove().
+ * @method: contains(), add(), set_union(), set_intersection(), set_difference(), set_set_difference.
  */
 class set
 {
@@ -30,10 +30,9 @@ class set
 	public:
 		set()	/* constructor for the class. */
 		{
-			/* Allocating memory for the boolean array. */
 			len = range_end-range_start+1;
 
-			/* Initializing the array. */
+			/* Initializing the vector. */
 			for(int i=0; i<len; i++)
 				bit_set.push_back(false);
 		}
@@ -56,20 +55,6 @@ class set
 		bool add(int n)
 		{
 			if(contains(n))
-				return false;
-
-			bit_set[n-range_start].flip();
-			return true;
-		}
-
-		/*
-		 * This function removes an integer to the set.
-		 * @param n: the integer to be removed.
-		 * return bool: true if the integer was removed, false if the integer was not present.
-		 */
-		bool remove(int n)
-		{
-			if(!contains(n))
 				return false;
 
 			bit_set[n-range_start].flip();
@@ -262,15 +247,15 @@ void parse_arguments(int args, char **argc)
 
 		/* First input file. */
 		if(i==3)
-			input_file_name1 = (string)argc[3];
+			input_file1 = (string)argc[3];
 
 		/* Second input file. */
 		if(i==4)
-			input_file_name2 = (string)argc[4];
+			input_file2 = (string)argc[4];
 
 		/* Output file name. */
 		if(i==5)
-			output_file_name = (string)argc[5];
+			output_file = (string)argc[5];
 	}
 }
 
@@ -348,15 +333,13 @@ void write_set(string filename, set s)
 	fclose(output);
 }
 
-void print_set(set s)
-{
-	for(int i=range_start; i<=range_end; i++)
-		if(s.contains(i))
-			cout<<i<<endl;
-}
-
+/*
+ * This function checks if the command line arguments are passed or not.
+ * If not, this asks for the arguments.
+ */
 void check_arguments(int args)
-{
+{	
+	/* if the range is not passed. */
     if(args<2)
     {
         cout<<"Enter the range (\"start-end\"): ";
@@ -367,6 +350,7 @@ void check_arguments(int args)
         args++;
     }
 
+    /* if the operation to be performed is not passed. */
     if(args<3)
     {
         cout<<"Enter the opration: ";
@@ -376,30 +360,38 @@ void check_arguments(int args)
         args++;
     }
 
+    /* if the first input file is not passed. */
     if(args<4)
     {
         cout<<"Enter the first input file: ";
-        cin>>input_file_name1;
+        cin>>input_file1;
         args++;
     }
 
+    /* if the second input file is not passed. */
     if(args<5)
     {
         cout<<"Enter the second input file: ";
-        cin>>input_file_name2;
+        cin>>input_file2;
         args++;
     }
 
+    /* if the output file is not passed. */
     if(args<6)
     {
         cout<<"Enter the output file: ";
-        cin>>output_file_name;
+        cin>>output_file;
     }
 }
 
+/* 
+ * This function performs the desired operation.
+ */
 set set_operation(set a, set b)
 {
     set c;
+
+    /* checking the operation to be performed. */
     if(operation==1)
         c = a.set_union(b);
     else if(operation==2)
@@ -410,7 +402,6 @@ set set_operation(set a, set b)
         c = a.set_set_difference(b);
 
     return c;
-
 }
 
 int main(int args, char **argc)
@@ -418,17 +409,19 @@ int main(int args, char **argc)
 	/* Parse command line arguments. */
     parse_arguments(args, argc);
 
+    /* checking for all the arguments. */
     check_arguments(args);
 
     set a, b;
 	int len = range_end-range_start+1;
 
     /* creating sets from file. */
-    create_set(input_file_name1, &a);
-    create_set(input_file_name2, &b);
+    create_set(input_file1, &a);
+    create_set(input_file2, &b);
 
+    /* performing a operation */
     set c = set_operation(a, b);
-    write_set(output_file_name, c);
+    write_set(output_file, c);
 
     return 0;
 }
