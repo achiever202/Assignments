@@ -143,13 +143,21 @@ void parse_range(char *range)
 	int len = strlen(range);
 
 	int i=0;
+
+	/* if number is of the form -4 */
+	if(range[0] == '-')
+	{
+		cout<<"ERROR: Invalid range!\n";
+		exit(0);
+	}
+
 	/* parsing the start index. */
 	while(i<len && range[i]!='-')
 	{
 		/* if it contains invalid characters. */
 		if(!(range[i]>='0' && range[i]<='9'))
 		{
-			cout<<"Invalid range!";
+			cout<<"ERROR: Invalid range!\n";
 			exit(0);
 		}
 
@@ -159,13 +167,20 @@ void parse_range(char *range)
 
 	i++;
 
+	/* if number is of the form 0- */
+	if(i==len)
+	{
+		cout<<"ERROR: Invalid range!\n";
+		exit(0);
+	}
+
 	/* parsing the end of the range. */
 	while(i<len)
 	{
 		/* if it contains invalid characters. */
 		if(!(range[i]>='0' && range[i]<='9'))
 		{
-			cout<<"Invalid range!";
+			cout<<"ERROR: Invalid range!\n";
 			exit(0);
 		}
 
@@ -180,7 +195,7 @@ void parse_range(char *range)
 	 */
 	if(range_end<range_start)
 	{
-		cout<<"Invalid range!";
+		cout<<"ERROR: Invalid range!\n";
 		exit(0);
 	}
 }
@@ -214,7 +229,7 @@ void parse_operation(char *op)
 	else
 	{
 		/* No valid operation found. */
-		cout<<"Invalid Operation!";
+		cout<<"ERROR: Invalid Operation!\n";
 		exit(0);
 	}
 }
@@ -231,7 +246,7 @@ void parse_arguments(int args, char **argc)
 	/* Error if more than five arguments. */
 	if(args>6)
 	{
-		cout<<"Invalid arguments.!";
+		cout<<"ERROR: Invalid arguments!\n";
 		exit(0);
 	}
 
@@ -275,7 +290,7 @@ void create_set(string filename, set *s)
 	/* Error while opening file. */
 	if(input==NULL)
 	{
-		cout<<"ERROR: could not open file "<<filename<<".";
+		cout<<"ERROR: could not open file "<<filename<<".\n";
 		exit(0);
 	}
 
@@ -285,7 +300,7 @@ void create_set(string filename, set *s)
 		/* If numbers out of range. */
 		if(num<range_start || num>range_end)
 		{
-			cout<<"ERROR: number not in the specified range.";
+			cout<<"ERROR: number not in the specified range.\n";
 			exit(0);
 		}
 
@@ -320,7 +335,7 @@ void write_set(string filename, set s)
 	/* Error while opening file. */
 	if(output==NULL)
 	{
-		cout<<"ERROR: could not open file "<<filename<<".";
+		cout<<"ERROR: could not open file "<<filename<<".\n";
 		exit(0);
 	}
 
