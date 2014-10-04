@@ -139,12 +139,12 @@
     
     /* Precedence declarations go here. */
     %right ASSIGN
-    %right NOT
+    %nonassoc NOT
     %nonassoc LE '<' '='
     %left '+' '-'
     %left '*' '/'
     %nonassoc ISVOID
-    %right '~'
+    %nonassoc '~'
     %left '@'
     %left '.'
     
