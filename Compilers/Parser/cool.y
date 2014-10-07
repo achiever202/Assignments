@@ -143,6 +143,7 @@
 
     %type <expression> expr
     %type <expressions> expr_list
+    %type <expressions> argument_list
     
     /* Precedence declarations go here. */
     %right ASSIGN
@@ -208,6 +209,10 @@
 
     expr: OBJECTID ASSIGN expr
     { $$ = assign($1, $3); }
+    | OBJECTID '(' ')'
+    { $$ = dispatch(object(idtable.add_string("self")), $1, nil_Expressions()); }
+    | OBJECTID '(' argument_list ')'
+    { $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
     | IF expr THEN expr ELSE expr FI
     { $$ = cond($2, $4, $6); }
     | WHILE expr LOOP expr POOL
@@ -251,6 +256,11 @@
     { $$ = single_Expressions($1); }
     | expr_list expr ';'
     { $$ = append_Expressions($1, single_Expressions($2)); }
+
+    argument_list: expr
+    { $$ = single_Expressions($1); }
+    | argument_list ',' expr
+    { $$ = append_Expressions($1, single_Expressions($3)); }
     
     /* end of grammar */
     %%
