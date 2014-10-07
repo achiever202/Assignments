@@ -142,6 +142,7 @@
     %type <formal> single_formal
 
     %type <expression> expr
+    %type <expressions> expr_list
     
     /* Precedence declarations go here. */
     %right ASSIGN
@@ -149,7 +150,7 @@
     %nonassoc LE '<' '='
     %left '+' '-'
     %left '*' '/'
-    %nonassoc ISVOID
+    %right ISVOID
     %right '~'
     %left '@'
     %left '.'
@@ -211,6 +212,8 @@
     { $$ = cond($2, $4, $6); }
     | WHILE expr LOOP expr POOL
     { $$ = loop($2, $4); }
+    | '{' expr_list '}'
+    { $$ = block($2); }
     | NEW TYPEID
     { $$ = new_($2); }
     | ISVOID expr
@@ -243,6 +246,11 @@
     { $$ = string_const($1); }
     | BOOL_CONST
     { $$ = bool_const($1); }
+
+    expr_list: expr ';'
+    { $$ = single_Expressions($1); }
+    | expr_list expr ';'
+    { $$ = append_Expressions($1, single_Expressions($2)); }
     
     /* end of grammar */
     %%
