@@ -142,6 +142,7 @@
     %type <formal> single_formal
 
     %type <expression> expr
+    %type <expression> let_expression
     %type <expressions> expr_list
     %type <expressions> argument_list
     
@@ -227,6 +228,10 @@
     { $$ = loop($2, $4); }
     | '{' expr_list '}'
     { $$ = block($2); }
+    | LET OBJECTID ':' TYPEID let_expression
+    { $$ = let($2, $4, no_expr(), $5); }
+    | LET OBJECTID ':' TYPEID ASSIGN expr let_expression
+    { $$ = let($2, $4, $6, $7); }
     | NEW TYPEID
     { $$ = new_($2); }
     | ISVOID expr
@@ -269,6 +274,13 @@
     { $$ = single_Expressions($1); }
     | argument_list ',' expr
     { $$ = append_Expressions($1, single_Expressions($3)); }
+
+    let_expression: IN expr
+    { $$ = $2; }
+    | OBJECTID ':' TYPEID let_expression
+    { $$ = let($1, $3, no_expr(), $4); }
+    | OBJECTID ':' TYPEID ASSIGN expr let_expression
+    { $$ = let($1, $3, $5, $6); }
     
     /* end of grammar */
     %%
