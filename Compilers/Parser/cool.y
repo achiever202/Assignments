@@ -154,7 +154,7 @@
     %right ISVOID
     %right '~'
     %left '@'
-    %left '.'
+    %nonassoc '.'
     
     %%
     /* 
@@ -209,6 +209,14 @@
 
     expr: OBJECTID ASSIGN expr
     { $$ = assign($1, $3); }
+    | expr '.' OBJECTID '(' ')'
+    { $$ = dispatch($1, $3, nil_Expressions()); }
+    | expr '.' OBJECTID '(' argument_list ')'
+    { $$ = dispatch($1, $3, $5); } 
+    | expr '@' TYPEID '.' OBJECTID '(' ')'
+    { $$ = static_dispatch($1, $3, $5, nil_Expressions()); }
+    | expr '@' TYPEID '.' OBJECTID '(' argument_list ')'
+    { $$ = static_dispatch($1, $3, $5, $7); }  
     | OBJECTID '(' ')'
     { $$ = dispatch(object(idtable.add_string("self")), $1, nil_Expressions()); }
     | OBJECTID '(' argument_list ')'
