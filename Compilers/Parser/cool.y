@@ -135,16 +135,22 @@
     %type <class_> class
     
     /* You will want to change the following line. */
-    %type <features> dummy_feature_list
+    %type <features> feature_list
+    %type <feature> single_feature
+
+    %type <formals> formal_list
+    %type <formal> single_formal
+
+    %type <expression> expr
     
     /* Precedence declarations go here. */
     %right ASSIGN
-    %nonassoc NOT
+    %right NOT
     %nonassoc LE '<' '='
     %left '+' '-'
     %left '*' '/'
     %nonassoc ISVOID
-    %nonassoc '~'
+    %right '~'
     %left '@'
     %left '.'
     
@@ -165,17 +171,78 @@
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
-    class	: CLASS TYPEID '{' dummy_feature_list '}' ';'
+    class	: CLASS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,idtable.add_string("Object"),$4,
     stringtable.add_string(curr_filename)); }
-    | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list '}' ';'
+    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
     ;
     
     /* Feature list may be empty, but no empty features in list. */
-    dummy_feature_list:		/* empty */
+    feature_list:		/* empty */
     {  $$ = nil_Features(); }
-    
+    | single_feature ';'
+    { $$ = single_Features($1); }
+    | feature_list single_feature ';'
+    { $$ = append_Features($1, single_Features($2)); }
+
+    single_feature: OBJECTID '(' ')' ':' TYPEID '{' expr '}'
+    { $$ = method($1, nil_Formals(), $5, $7); }
+    | OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}'
+    { $$ = method($1, $3, $6, $8); }
+    | OBJECTID ':' TYPEID
+    { $$ = attr($1, $3, no_expr()); }
+    | OBJECTID ':' TYPEID ASSIGN expr
+    { $$ = attr($1, $3, $5); }
+
+    formal_list:
+    { $$ = nil_Formals(); }
+    | single_formal 
+    { $$ = single_Formals($1); }
+    | formal_list ',' single_formal
+    { $$ = append_Formals($1, single_Formals($3)); }
+
+    single_formal: OBJECTID ':' TYPEID
+    { $$ = formal($1, $3); }
+
+    expr: OBJECTID ASSIGN expr
+    { $$ = assign($1, $3); }
+    | IF expr THEN expr ELSE expr FI
+    { $$ = cond($2, $4, $6); }
+    | WHILE expr LOOP expr POOL
+    { $$ = loop($2, $4); }
+    | NEW TYPEID
+    { $$ = new_($2); }
+    | ISVOID expr
+    { $$ = isvoid($2); }
+    | expr '+' expr
+    { $$ = plus($1, $3); }
+    | expr '-' expr
+    { $$ = sub($1, $3); }
+    | expr '*' expr
+    { $$ = mul($1, $3); }
+    | expr '/' expr
+    { $$ = divide($1, $3); }
+    | '~' expr
+    { $$ = neg($2); }
+    | expr '<' expr
+    { $$ = lt($1, $3); }
+    | expr LE expr
+    { $$ = leq($1, $3); }
+    | expr '=' expr
+    { $$ = eq($1, $3); }
+    | NOT expr
+    { $$ = comp($2); }
+    | '(' expr ')'
+    { $$ = $2; }
+    | OBJECTID 
+    { $$ = object($1); }
+    | INT_CONST
+    { $$ = int_const($1); }
+    | STR_CONST
+    { $$ = string_const($1); }
+    | BOOL_CONST
+    { $$ = bool_const($1); }
     
     /* end of grammar */
     %%
