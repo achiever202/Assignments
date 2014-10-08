@@ -229,6 +229,8 @@
     /* rules for expression. */
     expr: OBJECTID ASSIGN expr
     { $$ = assign($1, $3); }
+    
+    /*Dispatch and static dispatch*/
     | expr '.' OBJECTID '(' ')'
     { $$ = dispatch($1, $3, nil_Expressions()); }
     | expr '.' OBJECTID '(' argument_list ')'
@@ -241,22 +243,33 @@
     { $$ = dispatch(object(idtable.add_string("self")), $1, nil_Expressions()); }
     | OBJECTID '(' argument_list ')'
     { $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
+    
+    /*Control operations and loops*/
     | IF expr THEN expr ELSE expr FI
     { $$ = cond($2, $4, $6); }
     | WHILE expr LOOP expr POOL
     { $$ = loop($2, $4); }
+    
+    /*Expressions as a block*/
     | '{' expr_list '}'
     { $$ = block($2); }
+    
+    /*Let expressions */
     | LET OBJECTID ':' TYPEID let_expression
     { $$ = let($2, $4, no_expr(), $5); }
     | LET OBJECTID ':' TYPEID ASSIGN expr let_expression
     { $$ = let($2, $4, $6, $7); }
+    
+    /*Case statements*/
     | CASE expr OF case_list ESAC
     { $$ = typcase($2, $4); }
+    
+    /*Singular operations*/
     | NEW TYPEID
     { $$ = new_($2); }
     | ISVOID expr
     { $$ = isvoid($2); }
+    /*Binary operations*/
     | expr '+' expr
     { $$ = plus($1, $3); }
     | expr '-' expr
@@ -265,8 +278,12 @@
     { $$ = mul($1, $3); }
     | expr '/' expr
     { $$ = divide($1, $3); }
+    
+    /*Negation*/
     | '~' expr
     { $$ = neg($2); }
+    
+    /*Conditional operations*/
     | expr '<' expr
     { $$ = lt($1, $3); }
     | expr LE expr
@@ -275,8 +292,12 @@
     { $$ = eq($1, $3); }
     | NOT expr
     { $$ = comp($2); }
+    
+    /*Expressions within paranhtesis */
     | '(' expr ')'
     { $$ = $2; }
+    
+    /*Singular expression*/
     | OBJECTID 
     { $$ = object($1); }
     | INT_CONST
@@ -286,7 +307,7 @@
     | BOOL_CONST
     { $$ = bool_const($1); }
     
-    /* rules for an expression list. */
+    /* rules for an expression list in a block. */
     expr_list: expr ';'
     { $$ = single_Expressions($1); }
     | expr_list expr ';'
@@ -318,6 +339,7 @@
     | case_list single_case
     { $$ = append_Cases($1, single_Cases($2)); }
     
+    /*Single Case*/
     single_case: OBJECTID ':' TYPEID DARROW expr ';'
     { $$ = branch($1, $3, $5); }
     
