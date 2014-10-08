@@ -134,7 +134,7 @@
     %type <classes> class_list
     %type <class_> class
     
-    /* You will want to change the following line. */
+    /* declarations for non-terminals. */
     %type <features> feature_list
     %type <feature> single_feature
 	
@@ -150,7 +150,7 @@
     %type <cases> case_list
     %type <case_> single_case
     
-    /* Precedence declarations go here. */
+    /* Precedence declarations. */
     %nonassoc IN
     %right ASSIGN
     %nonassoc NOT
@@ -169,6 +169,7 @@
     program	: class_list	{ @$ = @1; ast_root = program($1); }
     ;
     
+    /* rules for list of classes. */
     class_list
     : class			/* single class */
     { $$ = single_Classes($1); parse_results = $$; }
@@ -180,6 +181,7 @@
     { $$ = $1; }
     ;
     
+    /* rules for a single class. */
     /* If no parent is specified, the class inherits from the Object class. */
     class	: CLASS TYPEID '{' feature_list '}' ';'
     { $$ = class_($2,idtable.add_string("Object"),$4,
@@ -188,6 +190,7 @@
     { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
     ;
     
+    /* rules for feature list. */
     /* Feature list may be empty, but no empty features in list. */
     feature_list:		/* empty */
     {  $$ = nil_Features(); }
@@ -196,26 +199,34 @@
     | feature_list error ';'
     { $$ = $1; }
 
+    /* rules for a single feature. */
+    /* it can be method or an attribute. */
+    /* an attribute can or cannot have an initialization. */
     single_feature: OBJECTID '(' dummy_formal_list ')' ':' TYPEID '{' expr '}'
     { $$ = method($1, $3, $6, $8); }
     | OBJECTID ':' TYPEID
     { $$ = attr($1, $3, no_expr()); }
     | OBJECTID ':' TYPEID ASSIGN expr
     { $$ = attr($1, $3, $5); }
-	
+    
+    /* rules for dummy formal list i.e. can have no formals at all. */
     dummy_formal_list:
     { $$ = nil_Formals(); }
     | formal_list
     { $$ = $1; }    
 
+    /* rules for formal list, multiple formals separated by commas. */
     formal_list:single_formal 
     { $$ = single_Formals($1); }
     | formal_list ',' single_formal
     { $$ = append_Formals($1, single_Formals($3)); }
 
+    /* rule for a single formal. */
+    /* it consists of the object id and the type of the object. */
     single_formal: OBJECTID ':' TYPEID
     { $$ = formal($1, $3); }
-
+  
+    /* rules for expression. */
     expr: OBJECTID ASSIGN expr
     { $$ = assign($1, $3); }
     | expr '.' OBJECTID '(' ')'
@@ -274,7 +285,8 @@
     { $$ = string_const($1); }
     | BOOL_CONST
     { $$ = bool_const($1); }
-
+    
+    /* rules for an expression list. */
     expr_list: expr ';'
     { $$ = single_Expressions($1); }
     | expr_list expr ';'
@@ -282,11 +294,15 @@
     | expr_list error ';'
     { $$ = $1; }
 
+    /* rules for the arguments to a dispatch. */
+    /* the expressions are separated by commas. */
     argument_list: expr
     { $$ = single_Expressions($1); }
     | argument_list ',' expr
     { $$ = append_Expressions($1, single_Expressions($3)); }
-
+    
+    /* rules for a let expression. */
+    /* it can further have multiple initialization, but always ends in an 'IN' expression. */
     let_expression: IN expr
     { $$ = $2; }
     | ',' OBJECTID ':' TYPEID let_expression
@@ -296,6 +312,7 @@
     | error let_expression
     { ; }
 
+    /* rules for case expression. */
     case_list: single_case
     { $$ = single_Cases($1); }
     | case_list single_case
