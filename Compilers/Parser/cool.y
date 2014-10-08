@@ -137,7 +137,8 @@
     /* You will want to change the following line. */
     %type <features> feature_list
     %type <feature> single_feature
-
+	
+    %type <formals> dummy_formal_list
     %type <formals> formal_list
     %type <formal> single_formal
 
@@ -147,15 +148,16 @@
     %type <expressions> argument_list
     
     /* Precedence declarations go here. */
+    %nonassoc IN
     %right ASSIGN
-    %right NOT
+    %nonassoc NOT
     %nonassoc LE '<' '='
     %left '+' '-'
     %left '*' '/'
-    %right ISVOID
-    %right '~'
+    %nonassoc ISVOID
+    %nonassoc '~'
     %left '@'
-    %nonassoc '.'
+    %left '.'
     
     %%
     /* 
@@ -184,23 +186,22 @@
     /* Feature list may be empty, but no empty features in list. */
     feature_list:		/* empty */
     {  $$ = nil_Features(); }
-    | single_feature ';'
-    { $$ = single_Features($1); }
-    | feature_list single_feature ';'
+    | feature_list single_feature  ';'
     { $$ = append_Features($1, single_Features($2)); }
 
-    single_feature: OBJECTID '(' ')' ':' TYPEID '{' expr '}'
-    { $$ = method($1, nil_Formals(), $5, $7); }
-    | OBJECTID '(' formal_list ')' ':' TYPEID '{' expr '}'
+    single_feature: OBJECTID '(' dummy_formal_list ')' ':' TYPEID '{' expr '}'
     { $$ = method($1, $3, $6, $8); }
     | OBJECTID ':' TYPEID
     { $$ = attr($1, $3, no_expr()); }
     | OBJECTID ':' TYPEID ASSIGN expr
     { $$ = attr($1, $3, $5); }
-
-    formal_list:
+	
+    dummy_formal_list:
     { $$ = nil_Formals(); }
-    | single_formal 
+    | formal_list
+    { $$ = $1; }    
+
+    formal_list:single_formal 
     { $$ = single_Formals($1); }
     | formal_list ',' single_formal
     { $$ = append_Formals($1, single_Formals($3)); }
