@@ -146,6 +146,9 @@
     %type <expression> let_expression
     %type <expressions> expr_list
     %type <expressions> argument_list
+
+    %type <cases> case_list
+    %type <case_> single_case
     
     /* Precedence declarations go here. */
     %nonassoc IN
@@ -168,11 +171,13 @@
     
     class_list
     : class			/* single class */
-    { $$ = single_Classes($1);
-    parse_results = $$; }
+    { $$ = single_Classes($1); parse_results = $$; }
+    | error ';'
+    { $$ = nil_Classes(); }
     | class_list class	/* several classes */
-    { $$ = append_Classes($1,single_Classes($2)); 
-    parse_results = $$; }
+    { $$ = append_Classes($1,single_Classes($2)); parse_results = $$; }
+    | class_list error ';'
+    { $$ = $1; }
     ;
     
     /* If no parent is specified, the class inherits from the Object class. */
@@ -188,6 +193,8 @@
     {  $$ = nil_Features(); }
     | feature_list single_feature  ';'
     { $$ = append_Features($1, single_Features($2)); }
+    | feature_list error ';'
+    { $$ = $1; }
 
     single_feature: OBJECTID '(' dummy_formal_list ')' ':' TYPEID '{' expr '}'
     { $$ = method($1, $3, $6, $8); }
@@ -233,6 +240,8 @@
     { $$ = let($2, $4, no_expr(), $5); }
     | LET OBJECTID ':' TYPEID ASSIGN expr let_expression
     { $$ = let($2, $4, $6, $7); }
+    | CASE expr OF case_list ESAC
+    { $$ = typcase($2, $4); }
     | NEW TYPEID
     { $$ = new_($2); }
     | ISVOID expr
@@ -270,6 +279,8 @@
     { $$ = single_Expressions($1); }
     | expr_list expr ';'
     { $$ = append_Expressions($1, single_Expressions($2)); }
+    | expr_list error ';'
+    { $$ = $1; }
 
     argument_list: expr
     { $$ = single_Expressions($1); }
@@ -278,10 +289,20 @@
 
     let_expression: IN expr
     { $$ = $2; }
-    | OBJECTID ':' TYPEID let_expression
-    { $$ = let($1, $3, no_expr(), $4); }
-    | OBJECTID ':' TYPEID ASSIGN expr let_expression
-    { $$ = let($1, $3, $5, $6); }
+    | ',' OBJECTID ':' TYPEID let_expression
+    { $$ = let($2, $4, no_expr(), $5); }
+    | ',' OBJECTID ':' TYPEID ASSIGN expr let_expression
+    { $$ = let($2, $4, $6, $7); }
+    | error let_expression
+    { ; }
+
+    case_list: single_case
+    { $$ = single_Cases($1); }
+    | case_list single_case
+    { $$ = append_Cases($1, single_Cases($2)); }
+    
+    single_case: OBJECTID ':' TYPEID DARROW expr ';'
+    { $$ = branch($1, $3, $5); }
     
     /* end of grammar */
     %%
