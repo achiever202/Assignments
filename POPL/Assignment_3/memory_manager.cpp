@@ -4,99 +4,83 @@
 #include <stdio.h>
 #include <vector>
 
+#define max_blocks 10000000
+#define ll long long unsigned
+
 using namespace std;
 
-class free_node
-{
-	public:
-		void *free_block;
-		int size;
-		free_node *next;
-}*free_list = NULL;
-
-class node
-{
-	public:
-		int num;
-		node *next;
-};
+int *buffer = NULL;
 
 /*
- * cur_heap_head stores the head of the heap pointer.
- * cur_heap_length stores the current size of the continuos heap in bytes.
+ * This class maintains the registry of all the allocated blocks in the buffer.
+ * @data memory_index: it stores the index of the allocated block in buffer.
+ * @data block_size: it stores the size of the allocated block.
+ * @data reference_count: it stores the count of references to the block.
  */
-void *cur_heap_head = NULL;
-int cur_heap_length;
-
-void create_buffer()
+class registry
 {
-	cout<<"Enter the size of the buffer: ";
-	cin>>cur_heap_length;
+	public:
+		int memory_index;
+		int block_size;
+		int reference_count;
 
-	cur_heap_head = malloc(cur_heap_length);
-	if(cur_heap_head==NULL)
+		/*
+		 * Constructor for the objects.
+		 * @param inde: the index of the memory block allocated.
+		 * @param size: the size of the block allocated.
+		 * It sets the reference count as 1.
+		 */
+		registry(int index, int size)
+		{
+			memory_index = index;
+			block_size = size;
+			reference_count = 1;
+		}
+
+		/*
+		 * ++ operator overloaded for the objects of this class.
+		 * It increments the reference count of the block.
+		 */
+		void operator++()
+		{
+			this->reference_count = this->reference_count + 1;
+		}
+
+		/*
+		 * -- operator overloaded for the objects of this class.
+		 * It decrements the reference count of the block.
+		 */
+		void operator--()
+		{
+			this->reference_count = this->reference_count - 1;
+		}
+};
+
+/* 
+ * This function creates a memory buffer which is used for allocation in the program.
+ * @param size: the number of blocks to be allocated.
+ */
+void create_buffer(int size)
+{
+	/* If size is more than maximum blocks, reporting error and aborting. */
+	if(size>max_blocks)
 	{
-		cout<<"ERROR: Could not create the heap.";
+		cout<<"ERROR: Memory too large to be allocated. Aborting.\n";
+		exit(0);
+	}
+
+	/* Allocating memory to the buffer. */
+	buffer = (int*)malloc(sizeof(int)*size);
+
+	/* If memory could not be allocated. */
+	if(buffer==NULL)
+	{
+		cout<<"ERROR: Could not allocated memory. Aborting.\n";
 		exit(0);
 	}
 }
 
-void delete_element(node **list_head)
-{
-	cout<<"Deleting element.\n";
-	cur_heap_head = *list_head;
-	cur_heap_length += sizeof(node);
-
-	*list_head = (*list_head)->next;
-}
-
-void* my_new(int size, node **list_head)
-{
-	if(cur_heap_length<size)
-	{
-		cout<<"ERROR: Not enough size on heap.\n";
-		delete_element(list_head);
-	}
-
-	void *temp = cur_heap_head;
-	cur_heap_head += size;
-	cur_heap_length -= size;
-	return temp;
-}
-
-void insert_element(int num, node **list_head)
-{
-	node *temp = (node*)my_new(sizeof(node), list_head);
-	if(temp==NULL)
-		return;
-
-	temp->num = num;
-	temp->next = *list_head;
-	*list_head = temp;
-}
-
-void show(node *list_head)
-{
-	node *temp = list_head;
-	while(temp!=NULL)
-	{
-		cout<<temp->num<<" ";
-		temp = temp->next;
-	}
-	cout<<endl;
-}
-
 int main()
 {
-	create_buffer();
-
-	node *list_head = NULL;
-	int n = 1;
-	while(n)
-	{
-		cin>>n;
-		insert_element(n, &list_head);
-		show(list_head);
-	}
 	return 0;
 }
