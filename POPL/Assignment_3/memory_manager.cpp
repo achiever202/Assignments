@@ -3,9 +3,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
+#include <map>
 
 #define max_blocks 10000000
-#define ll long long unsigned
+#define ll long long int
+#define pr pair<ll, Registry>
 
 using namespace std;
 
@@ -13,7 +15,6 @@ int *buffer = NULL;
 ll next_id = 0;
 int total_size;
 int current_index;
-
 
 /*
  * This class maintains the registry of all the allocated blocks in the buffer.
@@ -60,6 +61,8 @@ class Registry
 		}
 };
 
+map<ll, Registry> registry_map;
+
 class MyInt
 {
 	public:
@@ -99,7 +102,20 @@ void create_buffer(int size)
 
 ll allocate_from_buffer(int size)
 {
-	return 1;
+	/* Creating new Registry element allocated from current_index and of given size. */
+	Registry new_registry_element(current_index, size);
+
+	/* Updating the current index. */
+	current_index = current_index+size;
+
+	/* Inserting the new registry element in the map. */
+	registry_map.insert(pr(next_id, new_registry_element));
+
+	/* Updating the next id to be allcated. */
+	next_id++;
+
+	/* returning the id of the allocated registry element. */
+	return next_id-1;
 }
 
 /*
@@ -162,5 +178,16 @@ MyInt my_new(int size)
 
 int main()
 {
+	ll i;
+	cin>>i;
+	create_buffer(i);
+	cin>>i;
+	while(i)
+	{
+		MyInt m = my_new(1);
+		cin>>i;
+	}
+
+	delete[](buffer);
 	return 0;
 }
