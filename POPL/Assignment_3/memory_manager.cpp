@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #define max_blocks 10000000
 #define ll long long int
@@ -42,6 +43,11 @@ class Registry
 			reference_count = 1;
 		}
 
+		void update_index(int index)
+		{
+			memory_index = index;
+		}
+
 		/*
 		 * ++ operator overloaded for the objects of this class.
 		 * It increments the reference count of the block.
@@ -63,6 +69,10 @@ class Registry
 
 map<ll, Registry> registry_map;
 
+/*
+ * This class defines objects that store the id of the allocated registry element. 
+ * @data id: id of the registry element.
+ */
 class MyInt
 {
 	public:
@@ -118,6 +128,70 @@ ll allocate_from_buffer(int size)
 	return next_id-1;
 }
 
+/* Comparison function to sort the vector of registry elements. */
+bool comp(pr i, pr j)
+{
+	/* return true if the memory index of the first element is smaller. */
+	return i.second.memory_index<j.second.memory_index;
+}
+
+/* This function does memory compaction. */
+void compact_memory()
+{
+	/* Creating a vector to store the current registry elements in the map. */
+	vector <pr> registry_vector;
+
+	/* Iterating over the map, and pushing elements into the vector. */
+	map<ll, Registry>::iterator it;
+	while(it!=registry_map.end())
+	{
+		registry_vector.push_back(make_pair(it->first, it->second));
+		it++;
+	}
+
+	/* Sorting the vector by the memory index. */
+	sort(registry_vector.begin(), registry_vector.end(), comp);
+	
+	/* Compacting memory and moving memory blocks. */
+	ll cur_index = 0;
+	for(ll i=0; i<registry_vector.size(); i++)
+	{
+		/* If the cur_index is the one that is occupied. */
+		if(registry_vector[i].second.memory_index==cur_index)
+		{
+			cur_index += registry_vector[i].second.block_size;
+		}
+
+		/* If the memory block can be moved. */
+		else if(cur_index<registry_vector[i].second.memory_index)
+		{
+			/* Copying the data until the block size. */
+			for(ll j=0; j<registry_vector[i].second.block_size; j++)
+			{
+				buffer[cur_index+j] = buffer[registry_vector[i].second.memory_index + j];
+			}
+
+			/* Updating the memory index of the registry element. */
+			registry_vector[i].second.update_index(cur_index);
+
+			/* Updating the current index to be allocated. */
+			cur_index += registry_vector[i].second.block_size;
+		}
+	}
+
+	/* Updating the current index of the buffer to be allocated. */
+	current_index = cur_index;
+
+	/* Erasing all the elements in the map. */
+	registry_map.erase(registry_map.begin(), registry_map.end());
+
+	/* Inserting all the elements back into the map. */
+	for(ll i=0; i<registry_map.size(); i++)
+	{
+		registry_map.insert(registry_vector[i]);
+	}
+}
+
 /*
  * This function allocates memory, inserts a registry element in the map and returns the id.
  * @param size: number of blocks of memory to be allocated.
@@ -135,7 +209,7 @@ ll allocate_registry(int size)
 	}
 
 	/* compacting the memory. */
-	//compact_memory();
+	compact_memory();
 
 	/* if memory can be allocated after compaction. */
 	if(total_size-current_index>=size)
