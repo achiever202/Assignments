@@ -16,6 +16,7 @@ int *buffer = NULL;
 ll next_id = 0;
 int total_size;
 int current_index;
+int dummy_memory;
 
 /*
  * This class maintains the registry of all the allocated blocks in the buffer.
@@ -42,29 +43,6 @@ class Registry
 			block_size = size;
 			reference_count = 1;
 		}
-
-		void update_index(int index)
-		{
-			memory_index = index;
-		}
-
-		/*
-		 * ++ operator overloaded for the objects of this class.
-		 * It increments the reference count of the block.
-		 */
-		void operator++()
-		{
-			this->reference_count = this->reference_count + 1;
-		}
-
-		/*
-		 * -- operator overloaded for the objects of this class.
-		 * It decrements the reference count of the block.
-		 */
-		void operator--()
-		{
-			this->reference_count = this->reference_count - 1;
-		}
 };
 
 map<ll, Registry> registry_map;
@@ -78,9 +56,78 @@ class MyInt
 	public:
 		ll id;
 
-		void update_id(ll id)
+		/* simple constructor for the object. */
+		MyInt()
 		{
-			this->id = id;
+			id = -1;
+		}
+
+		/* copy constructor for the object. */
+		MyInt(const MyInt &b)
+		{
+			/* updating the id of the object. */
+			this->id = b.id;
+
+			/* increasing the reference count of the object being copied. */
+			map<ll, Registry>::iterator it = registry_map.find(b.id);
+			it->second.reference_count++;
+		}
+
+		/* overloading the assignment operator for the objects. */
+		MyInt& operator=(MyInt const &b)
+		{
+			/* updating the reference count for the lvalue. */
+			map<ll, Registry>::iterator it = registry_map.find(this->id);
+			if(it!=registry_map.end())
+			{
+				it->second.reference_count--;
+			}
+
+			/* updating the reference count for the rvalue. */
+			it = registry_map.find(b.id);
+			if(it!=registry_map.end())
+			{
+				it->second.reference_count++;
+				this->id = b.id;
+			}
+			else
+				cout<<"ERROR: Right side of assignment does Not point to a valid memory location.";
+
+			return *this;
+		}
+
+		/* overloading the [] operator for objects for access. */
+		int& operator[](const int &index)
+		{
+			/* indexing the memory allocated. */
+			map<ll, Registry>::iterator it = registry_map.find(this->id);
+
+			if(it!=registry_map.end())
+			{	
+				/* if out of bounds access. */
+				int memory_index = it->second.memory_index;
+				if(index>=it->second.block_size || index<0)
+				{
+					cout<<"ERROR: Memory out of bound being accessed. Prone to segmentation faults and erraneous results.\n";
+					return dummy_memory;
+				}
+
+				/* adding the offset to the base. */
+				memory_index += index;
+				return buffer[memory_index];
+			}
+			else
+			{
+				cout<<"ERROR: Invalid memory address.\n";
+				return dummy_memory; 
+			}
+		}
+
+		/* Destructor for the objects. */
+		~MyInt()
+		{
+			map<ll, Registry>::iterator it = registry_map.find(this->id);
+			it->second.reference_count--;
 		}
 };
 
@@ -145,7 +192,8 @@ void compact_memory()
 	map<ll, Registry>::iterator it = registry_map.begin();
 	while(it!=registry_map.end())
 	{
-		registry_vector.push_back(make_pair(it->first, it->second));
+		if(it->second.reference_count>0)
+			registry_vector.push_back(make_pair(it->first, it->second));
 		it++;
 	}
 
@@ -172,7 +220,7 @@ void compact_memory()
 			}
 
 			/* Updating the memory index of the registry element. */
-			registry_vector[i].second.update_index(cur_index);
+			registry_vector[i].second.memory_index = cur_index;
 
 			/* Updating the current index to be allocated. */
 			cur_index += registry_vector[i].second.block_size;
@@ -244,7 +292,7 @@ MyInt my_new(int size)
 	}
 	/* Updating the id of the allocated MyInt. */
 	else 
-		temp.update_id(id);
+		temp.id = id;
 
 	/* returning the object. */
 	return temp;
@@ -280,27 +328,9 @@ int main()
 {
 	ll i;
 	cin>>i;
-	create_buffer(i);
-	cin>>i;
-	while(i)
-	{
-		if(i==1)
-		{
-			ll j;
-			cin>>j;
-			MyInt num = my_new(j);
-			cout<<num.id<<endl;
-		}
-		else
-		{
-			ll j;
-			cin>>j;
-			MyInt num;
-			num.id = j;
-			my_delete(num);
-		}
-		cin>>i;
-	}
+	create_buffer(2);
+
+	MyInt num = my_new(3);
 
 	delete[](buffer);
 	return 0;
