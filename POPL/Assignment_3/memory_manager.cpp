@@ -142,7 +142,7 @@ void compact_memory()
 	vector <pr> registry_vector;
 
 	/* Iterating over the map, and pushing elements into the vector. */
-	map<ll, Registry>::iterator it;
+	map<ll, Registry>::iterator it = registry_map.begin();
 	while(it!=registry_map.end())
 	{
 		registry_vector.push_back(make_pair(it->first, it->second));
@@ -151,7 +151,7 @@ void compact_memory()
 
 	/* Sorting the vector by the memory index. */
 	sort(registry_vector.begin(), registry_vector.end(), comp);
-	
+
 	/* Compacting memory and moving memory blocks. */
 	ll cur_index = 0;
 	for(ll i=0; i<registry_vector.size(); i++)
@@ -186,7 +186,7 @@ void compact_memory()
 	registry_map.erase(registry_map.begin(), registry_map.end());
 
 	/* Inserting all the elements back into the map. */
-	for(ll i=0; i<registry_map.size(); i++)
+	for(ll i=0; i<registry_vector.size(); i++)
 	{
 		registry_map.insert(registry_vector[i]);
 	}
@@ -240,7 +240,7 @@ MyInt my_new(int size)
 	if(id<0)
 	{
 		cout<<"No memory left in the buffer. Could not allocate memory using my_new().\n";
-		exit(0);
+		return temp;
 	}
 	/* Updating the id of the allocated MyInt. */
 	else 
@@ -248,6 +248,32 @@ MyInt my_new(int size)
 
 	/* returning the object. */
 	return temp;
+}
+
+/*
+ * This function implements the functionality of the delete operator. 
+ * @param num: the MyInt element to be deleted.
+ */
+void my_delete(MyInt num)
+{
+	/* Finding the registry element associated with the MyInt element in the map. */
+	map<ll, Registry>::iterator it = registry_map.find(num.id);
+
+	/* Checking if the element exists. */
+	if(it!=registry_map.end())
+	{
+		/* Decreasing the reference count of the registry element. */
+		it->second.reference_count--;
+
+		/* Removing the element from the map, if no reference count left. */
+		if(it->second.reference_count==0)
+			registry_map.erase(it);
+	}
+	else
+	{
+		/* Element not found in the map. */
+		cout<<"ERROR: No reference to any valid element found.\n";
+	}
 }
 
 int main()
@@ -258,7 +284,21 @@ int main()
 	cin>>i;
 	while(i)
 	{
-		MyInt m = my_new(1);
+		if(i==1)
+		{
+			ll j;
+			cin>>j;
+			MyInt num = my_new(j);
+			cout<<num.id<<endl;
+		}
+		else
+		{
+			ll j;
+			cin>>j;
+			MyInt num;
+			num.id = j;
+			my_delete(num);
+		}
 		cin>>i;
 	}
 
