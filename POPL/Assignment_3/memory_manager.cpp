@@ -70,7 +70,8 @@ class MyInt
 
 			/* increasing the reference count of the object being copied. */
 			map<ll, Registry>::iterator it = registry_map.find(b.id);
-			it->second.reference_count++;
+			if(it!=registry_map.end())
+				it->second.reference_count++;
 		}
 
 		/* overloading the assignment operator for the objects. */
@@ -91,7 +92,10 @@ class MyInt
 				this->id = b.id;
 			}
 			else
-				cout<<"ERROR: Right side of assignment does Not point to a valid memory location.";
+			{
+				this->id = -1;
+				cout<<"ERROR: Right side of assignment does Not point to a valid memory location.\n";
+			}
 
 			return *this;
 		}
@@ -123,11 +127,38 @@ class MyInt
 			}
 		}
 
+		void update_id(int id)
+		{
+			map<ll, Registry>::iterator it = registry_map.find(this->id);
+			if(it!=registry_map.end())
+			{
+				it->second.reference_count--;
+			}
+			else
+			{
+				//cout<<"ERROR: The previous id not valid.\n";
+			}
+
+			it = registry_map.find(id);
+			if(it!=registry_map.end())
+			{
+				this->id = id;
+				it->second.reference_count++;
+			}
+			else
+			{
+				this->id = -1;
+				//cout<<"ERROR: The new id not valid.\n";
+			}
+		}
+
 		/* Destructor for the objects. */
 		~MyInt()
 		{
 			map<ll, Registry>::iterator it = registry_map.find(this->id);
-			it->second.reference_count--;
+
+			if(it!=registry_map.end())
+				it->second.reference_count--;
 		}
 };
 
@@ -290,6 +321,7 @@ MyInt my_new(int size)
 		cout<<"No memory left in the buffer. Could not allocate memory using my_new().\n";
 		return temp;
 	}
+
 	/* Updating the id of the allocated MyInt. */
 	else 
 		temp.id = id;
@@ -302,35 +334,222 @@ MyInt my_new(int size)
  * This function implements the functionality of the delete operator. 
  * @param num: the MyInt element to be deleted.
  */
-void my_delete(MyInt num)
+void my_delete(MyInt *num)
 {
 	/* Finding the registry element associated with the MyInt element in the map. */
-	map<ll, Registry>::iterator it = registry_map.find(num.id);
+	map<ll, Registry>::iterator it = registry_map.find(num->id);
 
 	/* Checking if the element exists. */
 	if(it!=registry_map.end())
 	{
 		/* Decreasing the reference count of the registry element. */
 		it->second.reference_count--;
-
-		/* Removing the element from the map, if no reference count left. */
-		if(it->second.reference_count==0)
-			registry_map.erase(it);
 	}
 	else
 	{
 		/* Element not found in the map. */
 		cout<<"ERROR: No reference to any valid element found.\n";
 	}
+
+	num->id = -1;
 }
+
+/* for debugging. */
+void show_registry()
+{
+	cout<<"Dump:\n";
+
+	map<ll, Registry>::iterator it = registry_map.begin();
+	while(it!=registry_map.end())
+	{
+		cout<<it->first<<" "<<it->second.memory_index<<" "<<it->second.block_size<<" "<<it->second.reference_count<<" "<<buffer[it->second.memory_index]<<endl;
+		it++;
+	}
+}
+
+/*
+ * This class is used to implement linked list of integers.
+ * The object contains the head of the linked list.
+ */
+class list
+{
+		/* head of the linked list. */
+		MyInt head;
+
+	public:
+
+		/* constructor for the object, initialize the id of head to -1 to point to NULL. */
+		list()
+		{
+			head.update_id(-1);
+		}
+
+		/*
+		 * This function is used to insert an element into the list.
+		 * @param num: the number to be inserted.
+		 */
+		void list_insert(int num)
+		{	
+			/* if the list is currently empty. */
+			if(head.id==-1)
+			{
+				/* allocate a node. */
+				head = my_new(2);
+				
+				/* if memory could not be allocated. */
+				if(head.id==-1)
+					return;
+
+				/* storing the number, and updating the next pointer. */
+				head[0] = num;
+				head[1] = -1;
+			}
+			else
+			{
+				/* inserting the integer at the front of the list. */
+				MyInt temp;
+				temp = head;
+					
+				/* allocating a node. */
+				head = my_new(2);
+
+				/* if memory could not be allocated. */
+				if(head.id==-1)
+				{
+					head.update_id(temp.id);
+					return;
+				}
+
+				/* storing the number, and updating the next node. */
+				head[0] = num;
+				head[1] = temp.id;
+
+				/* updating the refernce count. */
+				map<ll, Registry>::iterator it = registry_map.find(temp.id);
+				if(it!=registry_map.end())
+					it->second.reference_count++;
+			}
+		}
+
+		/*
+		 * This function deletes and element from the list.
+		 * @param num: the number to be deleted.
+		 */
+		void list_delete(int num)
+		{
+			/* if the list is empty. */
+			if(head.id==-1)
+			{
+				cout<<"ERROR: Element not found.\n";
+				return;
+			}
+
+			/* if the first element is the number to be deleted. */
+			if(head[0]==num)
+			{
+				/* delete the element and update the head of the list. */
+				MyInt temp = head;
+				head.update_id(head[1]);
+
+				/* update the reference count. */
+				map<ll, Registry>::iterator it = registry_map.find(temp[1]);
+				if(it!=registry_map.end())
+					it->second.reference_count--;
+
+				/* deallocate memory. */
+				my_delete(&temp);
+			}
+			else
+			{
+				/* traversing the list to find the element. */
+				MyInt temp;
+				temp = head;
+
+				MyInt temp2;
+				temp2.update_id(temp[1]);
+
+				while(temp2.id!=-1)
+				{
+					if(temp2[0]==num)
+					{
+						/* updating the pointers, and reference count. */
+						temp[1] = temp2[1];
+
+						map<ll, Registry>::iterator it = registry_map.find(temp2.id);
+						if(it!=registry_map.end())
+							it->second.reference_count--;
+
+						/* deallocating memory. */
+						my_delete(&temp2);
+						return;
+					}
+
+					/* updating the pointers. */
+					temp.update_id(temp[1]);
+					temp2.update_id(temp2[1]);
+				}
+
+				/* if element not found. */
+				cout<<"ERROR: Element not found.\n";
+			}
+		}
+
+		/* This function displays the contents of the list. */
+		void list_show()
+		{
+			/* traversing the list. */
+			MyInt temp = head;
+			while(temp.id!=-1)
+			{
+				cout<<temp[0]<<" ";
+				temp.update_id(temp[1]);
+			}
+			cout<<endl;
+		}
+
+		/* destructor for the linked list. */
+		~list()
+		{
+			MyInt temp;
+			while(head.id!=-1)
+			{
+				temp = head;
+				head.update_id(head[1]);
+				my_delete(&temp);
+			}
+		}
+};
+
+
 
 int main()
 {
 	ll i;
 	cin>>i;
-	create_buffer(2);
+	create_buffer(i);
+	list a;
 
-	MyInt num = my_new(3);
+	cin>>i;
+	while(i)
+	{
+		if(i==1)
+		{
+			ll j;
+			cin>>j;
+			a.list_insert(j);
+		}
+		else if(i==2)
+		{
+			ll j;
+			cin>>j;
+			a.list_delete(j);
+		}
+		else
+			a.list_show();
+
+		show_registry();
+		cin>>i;
+	}
 
 	delete[](buffer);
 	return 0;
