@@ -17,13 +17,13 @@
 #include <stdlib.h> // for random
 #include <time.h>
 
-static minix_timer_t sched_timer;
+static timer_t sched_timer;
 static unsigned balance_timeout;
 
 #define BALANCE_TIMEOUT	5 /* how often to balance queues in seconds */
 
 static int schedule_process(struct schedproc * rmp, unsigned flags);
-static void balance_queues(minix_timer_t *tp);
+static void balance_queues(struct timer *tp);
 
 #define SCHEDULE_CHANGE_PRIO	0x1
 #define SCHEDULE_CHANGE_QUANTUM	0x2
@@ -97,7 +97,7 @@ int do_lottery()
 {
 	printf("In do lotter:\n");
 	int i, lottery_succeded = 0;
-	int lottery_ticket = rand()%total_tickets + 1;
+	int lottery_ticket = random()%total_tickets + 1;
 
 	struct schedproc *rmp = NULL;
 	for(i=0; i<NR_PROCS; i++)
@@ -168,10 +168,10 @@ int do_stop_scheduling(message *m_ptr)
 	if (!accept_message(m_ptr))
 		return EPERM;
 
-	if (sched_isokendpt(m_ptr->m_lsys_sched_scheduling_stop.endpoint,
+	if (sched_isokendpt(m_ptr->SCHEDULING_ENDPOINT,
 		    &proc_nr_n) != OK) {
 		printf("SCHED: WARNING: got an invalid endpoint in OOQ msg "
-		"%d\n", m_ptr->m_lsys_sched_scheduling_stop.endpoint);
+		"%d\n", m_ptr->SCHEDULING_ENDPOINT);
 		return EBADEPT;
 	}
 
@@ -206,15 +206,15 @@ int do_start_scheduling(message *m_ptr)
 		return EPERM;
 
 	/* Resolve endpoint to proc slot. */
-	if ((rv = sched_isemtyendpt(m_ptr->m_lsys_sched_scheduling_start.endpoint,
+	if ((rv = sched_isemtyendpt(m_ptr->SCHEDULING_ENDPOINT,
 			&proc_nr_n)) != OK) {
 		return rv;
 	}
 	rmp = &schedproc[proc_nr_n];
 
-	rmp->endpoint     = m_ptr->m_lsys_sched_scheduling_start.endpoint;
-	rmp->parent       = m_ptr->m_lsys_sched_scheduling_start.parent;
-	rmp->max_priority = m_ptr->m_lsys_sched_scheduling_start.maxprio;
+	rmp->endpoint     = m_ptr->SCHEDULING_ENDPOINT;
+	rmp->parent       = m_ptr->SCHEDULING_PARENT;
+	rmp->max_priority = (unsigned) m_ptr->SCHEDULING_MAXPRIO;
 	if (rmp->max_priority >= NR_SCHED_QUEUES) {
 		return EINVAL;
 	}
@@ -248,7 +248,7 @@ int do_start_scheduling(message *m_ptr)
 		 * quanum and priority are set explicitly rather than inherited 
 		 * from the parent */
 		rmp->priority   = MAX_USER_Q;
-		rmp->time_slice = m_ptr->m_lsys_sched_scheduling_start.quantum;
+		rmp->time_slice = (unsigned) m_ptr->SCHEDULING_QUANTUM;;
 		rmp->num_of_tickets = 0;
 		break;
 		
@@ -256,7 +256,7 @@ int do_start_scheduling(message *m_ptr)
 		/* Inherit current priority and time slice from parent. Since there
 		 * is currently only one scheduler scheduling the whole system, this
 		 * value is local and we assert that the parent endpoint is valid*/ 
-		if ((rv = sched_isokendpt(m_ptr->m_lsys_sched_scheduling_start.parent,
+		if ((rv = sched_isokendpt(m_ptr->SCHEDULING_PARENT,
 				&parent_nr_n)) != OK)
 			return rv;
 
@@ -307,7 +307,7 @@ int do_start_scheduling(message *m_ptr)
 	 * scheduler into the "scheduler" field.
 	 */
 
-	m_ptr->m_sched_lsys_scheduling_start.scheduler = SCHED_PROC_NR;
+	m_ptr->SCHEDULING_SCHEDULER = SCHED_PROC_NR;
 
 	return OK;
 }
@@ -326,14 +326,14 @@ int do_nice(message *m_ptr)
 	if (!accept_message(m_ptr))
 		return EPERM;
 
-	if (sched_isokendpt(m_ptr->m_pm_sched_scheduling_set_nice.endpoint, &proc_nr_n) != OK) {
-		printf("SCHED: WARNING: got an invalid endpoint in OoQ msg "
-		"%d\n", m_ptr->m_pm_sched_scheduling_set_nice.endpoint);
+	if (sched_isokendpt(m_ptr->SCHEDULING_ENDPOINT, &proc_nr_n) != OK) {
+		printf("SCHED: WARNING: got an invalid endpoint in OOQ msg "
+		"%ld\n", m_ptr->SCHEDULING_ENDPOINT);
 		return EBADEPT;
 	}
 
 	rmp = &schedproc[proc_nr_n];
-	new_q = m_ptr->m_pm_sched_scheduling_set_nice.maxprio;
+	new_q = (unsigned) m_ptr->SCHEDULING_MAXPRIO;
 	if (new_q >= NR_SCHED_QUEUES) {
 		return EINVAL;
 	}
@@ -401,7 +401,7 @@ void init_scheduling(void)
 	set_timer(&sched_timer, balance_timeout, balance_queues, 0);
 
 	/* changes here */
-	srand(time(NULL));
+	srandom(time(NULL));
 }
 
 /*===========================================================================*
@@ -413,7 +413,7 @@ void init_scheduling(void)
  * quantum. This function will find all proccesses that have been bumped down,
  * and pulls them back up. This default policy will soon be changed.
  */
-static void balance_queues(minix_timer_t *tp)
+static void balance_queues(struct timer *tp)
 {
 	struct schedproc *rmp;
 	int proc_nr;
