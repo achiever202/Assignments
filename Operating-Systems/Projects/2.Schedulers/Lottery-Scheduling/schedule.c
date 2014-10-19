@@ -14,6 +14,9 @@
 #include <machine/archtypes.h>
 #include "kernel/proc.h" /* for queue constants */
 
+#include <stdlib.h> // for random
+#include <time.h>
+
 static minix_timer_t sched_timer;
 static unsigned balance_timeout;
 
@@ -45,6 +48,10 @@ static void balance_queues(minix_timer_t *tp);
 
 /* processes created by RS are sysytem processes */
 #define is_system_proc(p)	((p)->parent == RS_PROC_NR)
+
+/* global variables defined here */
+int total_tickets = 0;
+int cur_process_num = 1;
 
 static unsigned cpu_proc[CONFIG_MAX_CPUS];
 
@@ -83,6 +90,41 @@ static void pick_cpu(struct schedproc * proc)
 #endif
 }
 
+/*
+ * Lottery function added here.
+ */
+int do_lottery()
+{
+	printf("In do lotter:\n");
+	int i, lottery_succeded = 0;
+	int lottery_ticket = rand()%total_tickets + 1;
+
+	struct schedproc *rmp = NULL;
+	for(i=0; i<NR_PROCS; i++)
+	{
+		rmp = schedproc[i];
+		if(rmp->flags && IN_USE && rmp->priority>MAX_USER_Q)
+		{
+			lottery_ticket -= rmp->num_of_tickets;
+			if(lottery_ticket<=0)
+			{
+				lottery_succeded = 1;
+				rmp->priority = MAX_USER_Q;
+				printf("Sheduling given to process: %d with tickets: %d.\n", rmp->process_num, rmp->num_of_tickets);
+				break;
+			}
+		}
+	}
+
+	if(lottery_succeded)
+	{
+		schedule_process_local(rmp);
+	}
+
+	return OK;
+}
+
+
 /*===========================================================================*
  *				do_noquantum				     *
  *===========================================================================*/
@@ -99,13 +141,18 @@ int do_noquantum(message *m_ptr)
 	}
 
 	rmp = &schedproc[proc_nr_n];
-	if (rmp->priority < MIN_USER_Q) {
-		rmp->priority += 1; /* lower priority */
-	}
+	/*if (rmp->priority < MIN_USER_Q) {
+		rmp->priority += 1; /* lower priority 
+	}*/
 
-	if ((rv = schedule_process_local(rmp)) != OK) {
+	if(rmp->num_of_tickets>0)
+		rmp->priority = MAX_USER_Q + 1;
+
+	/*if ((rv = schedule_process_local(rmp)) != OK) {
 		return rv;
-	}
+	}*/
+
+	do_lottery();
 	return OK;
 }
 
@@ -128,12 +175,17 @@ int do_stop_scheduling(message *m_ptr)
 		return EBADEPT;
 	}
 
+
 	rmp = &schedproc[proc_nr_n];
+	/* changes here */
+	total_tickets -= rmp->num_of_tickets;
+	/* changes end */
 #ifdef CONFIG_SMP
 	cpu_proc[rmp->cpu]--;
 #endif
 	rmp->flags = 0; /*&= ~IN_USE;*/
 
+	do_lottery();
 	return OK;
 }
 
@@ -160,7 +212,6 @@ int do_start_scheduling(message *m_ptr)
 	}
 	rmp = &schedproc[proc_nr_n];
 
-	/* Populate process slot */
 	rmp->endpoint     = m_ptr->m_lsys_sched_scheduling_start.endpoint;
 	rmp->parent       = m_ptr->m_lsys_sched_scheduling_start.parent;
 	rmp->max_priority = m_ptr->m_lsys_sched_scheduling_start.maxprio;
@@ -174,8 +225,9 @@ int do_start_scheduling(message *m_ptr)
 	if (rmp->endpoint == rmp->parent) {
 		/* We have a special case here for init, which is the first
 		   process scheduled, and the parent of itself. */
-		rmp->priority   = USER_Q;
+		rmp->priority   = MAX_USER_Q;
 		rmp->time_slice = DEFAULT_USER_TIME_SLICE;
+		rmp->num_of_tickets = 0;
 
 		/*
 		 * Since kernel never changes the cpu of a process, all are
@@ -195,20 +247,23 @@ int do_start_scheduling(message *m_ptr)
 		/* We have a special case here for system processes, for which
 		 * quanum and priority are set explicitly rather than inherited 
 		 * from the parent */
-		rmp->priority   = rmp->max_priority;
+		rmp->priority   = MAX_USER_Q;
 		rmp->time_slice = m_ptr->m_lsys_sched_scheduling_start.quantum;
+		rmp->num_of_tickets = 0;
 		break;
 		
 	case SCHEDULING_INHERIT:
 		/* Inherit current priority and time slice from parent. Since there
 		 * is currently only one scheduler scheduling the whole system, this
-		 * value is local and we assert that the parent endpoint is valid */
+		 * value is local and we assert that the parent endpoint is valid*/ 
 		if ((rv = sched_isokendpt(m_ptr->m_lsys_sched_scheduling_start.parent,
 				&parent_nr_n)) != OK)
 			return rv;
 
-		rmp->priority = schedproc[parent_nr_n].priority;
-		rmp->time_slice = schedproc[parent_nr_n].time_slice;
+		rmp->priority = MAX_USER_Q+1;
+		rmp->time_slice = DEFAULT_USER_TIME_SLICE;
+		rmp->num_of_tickets = 5;
+		total_tickets += 5;
 		break;
 		
 	default: 
@@ -227,17 +282,23 @@ int do_start_scheduling(message *m_ptr)
 
 	/* Schedule the process, giving it some quantum */
 	pick_cpu(rmp);
-	while ((rv = schedule_process(rmp, SCHEDULE_CHANGE_ALL)) == EBADCPU) {
-		/* don't try this CPU ever again */
-		cpu_proc[rmp->cpu] = CPU_DEAD;
-		pick_cpu(rmp);
-	}
 
-	if (rv != OK) {
-		printf("Sched: Error while scheduling process, kernel replied %d\n",
-			rv);
-		return rv;
+	if(rmp->num_of_tickets==0)
+	{
+		while ((rv = schedule_process(rmp, SCHEDULE_CHANGE_ALL)) == EBADCPU) {
+			/* don't try this CPU ever again */
+			cpu_proc[rmp->cpu] = CPU_DEAD;
+			pick_cpu(rmp);
+		}
+
+		if (rv != OK) {
+			printf("Sched: Error while scheduling process, kernel replied %d\n",
+				rv);
+			return rv;
+		}
 	}
+	else
+		do_lottery();
 
 	/* Mark ourselves as the new scheduler.
 	 * By default, processes are scheduled by the parents scheduler. In case
@@ -338,6 +399,9 @@ void init_scheduling(void)
 	balance_timeout = BALANCE_TIMEOUT * sys_hz();
 	init_timer(&sched_timer);
 	set_timer(&sched_timer, balance_timeout, balance_queues, 0);
+
+	/* changes here */
+	srand(time(NULL));
 }
 
 /*===========================================================================*
