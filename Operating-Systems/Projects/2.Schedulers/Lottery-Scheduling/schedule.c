@@ -146,13 +146,16 @@ int do_noquantum(message *m_ptr)
 	}*/
 
 	if(rmp->num_of_tickets>0)
+	{
 		rmp->priority = MAX_USER_Q + 1;
+		do_lottery();
+		return OK;
+	}
 
-	/*if ((rv = schedule_process_local(rmp)) != OK) {
+	if ((rv = schedule_process_local(rmp)) != OK) {
 		return rv;
-	}*/
+	}
 
-	do_lottery();
 	return OK;
 }
 
@@ -162,7 +165,7 @@ int do_noquantum(message *m_ptr)
 int do_stop_scheduling(message *m_ptr)
 {
 	register struct schedproc *rmp;
-	int proc_nr_n;
+	int proc_nr_n, prev_tickets;
 
 	/* check who can send you requests */
 	if (!accept_message(m_ptr))
@@ -178,6 +181,7 @@ int do_stop_scheduling(message *m_ptr)
 
 	rmp = &schedproc[proc_nr_n];
 	/* changes here */
+	prev_tickets = rmp->num_of_tickets;
 	total_tickets -= rmp->num_of_tickets;
 	/* changes end */
 #ifdef CONFIG_SMP
@@ -185,7 +189,8 @@ int do_stop_scheduling(message *m_ptr)
 #endif
 	rmp->flags = 0; /*&= ~IN_USE;*/
 
-	do_lottery();
+	if(prev_tickets>0)
+		do_lottery();
 	return OK;
 }
 
@@ -317,13 +322,13 @@ int do_start_scheduling(message *m_ptr)
  *===========================================================================*/
 int do_nice(message *m_ptr)
 {
-	struct schedproc *rmp;
+	/*struct schedproc *rmp;
 	int rv;
 	int proc_nr_n;
 	unsigned new_q, old_q, old_max_q;
 
 	/* check who can send you requests */
-	if (!accept_message(m_ptr))
+	/*if (!accept_message(m_ptr))
 		return EPERM;
 
 	if (sched_isokendpt(m_ptr->SCHEDULING_ENDPOINT, &proc_nr_n) != OK) {
@@ -339,20 +344,21 @@ int do_nice(message *m_ptr)
 	}
 
 	/* Store old values, in case we need to roll back the changes */
-	old_q     = rmp->priority;
+	/*old_q     = rmp->priority;
 	old_max_q = rmp->max_priority;
 
 	/* Update the proc entry and reschedule the process */
-	rmp->max_priority = rmp->priority = new_q;
+	/*rmp->max_priority = rmp->priority = new_q;
 
 	if ((rv = schedule_process_local(rmp)) != OK) {
 		/* Something went wrong when rescheduling the process, roll
 		 * back the changes to proc struct */
-		rmp->priority     = old_q;
+		/*rmp->priority     = old_q;
 		rmp->max_priority = old_max_q;
 	}
 
-	return rv;
+	return rv;*/
+	return OK;
 }
 
 /*===========================================================================*
@@ -415,17 +421,17 @@ void init_scheduling(void)
  */
 static void balance_queues(struct timer *tp)
 {
-	struct schedproc *rmp;
+	/*struct schedproc *rmp;
 	int proc_nr;
 
 	for (proc_nr=0, rmp=schedproc; proc_nr < NR_PROCS; proc_nr++, rmp++) {
 		if (rmp->flags & IN_USE) {
 			if (rmp->priority > rmp->max_priority) {
-				rmp->priority -= 1; /* increase priority */
+				rmp->priority -= 1; /* increase priority 
 				schedule_process_local(rmp);
 			}
 		}
 	}
 
-	set_timer(&sched_timer, balance_timeout, balance_queues, 0);
+	set_timer(&sched_timer, balance_timeout, balance_queues, 0);*/
 }
