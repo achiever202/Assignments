@@ -1,0 +1,36 @@
+										README
+
+Author: Abdul Aziz (CS12B1001), Adarsh Pugalia(ES12B1001), Ritambhara Chauhan (ES12B1015)
+Topic: 	Multi Level Feedback Queue (MLFQ) scheduling
+
+=========================================================================================
+
+This folder contains:
+1. src/include/minix/config.h
+2. src/servers/sched/schedproc.h
+3. src/servers/sched/schedule.c
+
+=========================================================================================
+
+Instructions:
+1. 	Move all the files in the current folder in the /usr directory of the system preserving
+	their directory structure.
+	For example, the file src/servers/sched/schedule.c should be placed in /usr/src/servers/sched/ as
+	schedule.c in the system.
+
+2. 	Traverse to the src directory, using the following command,
+	cd /usr/src
+
+3. 	Execute the following commands, in order for re-compiling the kernel with the changes,
+	make clean
+	make build
+	make install
+
+4. 	Move to the releasetools directory using the following command,
+	cd releasetools
+
+5. 	Execute the following command in the current directory,
+	make hdboot
+
+6. 	Reboot the system using the following command
+	reboot
