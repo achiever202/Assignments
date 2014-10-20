@@ -478,3 +478,42 @@ int pick_lottery()
 	}
 	return OK;
 }
+
+/*
+ * This function is used to change the tickets for a process in lottery scheduling.
+ * It adds/removes the number of tickets for the current process.
+ * If the number of tickets exceed 100, number of tickets is set to 100.
+ * If the number of tickets becomes less than 0, the number of tickets is set to 0.
+ */
+int do_ticket(message *m_ptr)
+{
+	/* creating variables to be used. */
+	struct schedproc *rmp;
+	int rv;
+	int proc_nr_n;
+	
+	/* nummber of tickets to be added or removed. */
+	int incr = (int)m_ptr->SCHEDULING_MAXPRIO;
+	
+	/* checking the endpoint and obtaining the index of the process. */
+	if(sched_isokendpt(m_ptr->SCHEDULING_ENDPOINT, &proc_nr_n)!=OK)
+	{
+		printf("SCHED: WARNING: Got an invalid endpoint in OOQ message  ");
+		return EBADEPT;
+	}
+	
+	/* obtaining the scheduling structure for the process. */
+	rmp=&schedproc[proc_nr_n];
+	
+	/* updating the number of tickets. */
+	rmp->num_of_tickets+=incr;
+	
+	/* checking the limits for the tickets. */
+	if(rmp->num_of_tickets>100)
+		rmp->num_of_tickets=100;
+	if(rmp->num_of_tickets<5)
+		rmp->num_of_tickets=5;
+		
+	/* picking lottery again. */
+	return pick_lottery();
+}
