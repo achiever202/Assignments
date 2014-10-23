@@ -96,7 +96,6 @@ class MyInt
 				this->id = -1;
 				cout<<"ERROR: Right side of assignment does Not point to a valid memory location.\n";
 			}
-
 			return *this;
 		}
 
@@ -508,48 +507,70 @@ class list
 		}
 
 		/* destructor for the linked list. */
-		~list()
+		/*~list()
 		{
+			cout<<"in\n";
 			MyInt temp;
 			while(head.id!=-1)
 			{
+				cout<<"dest"<<" "<<head.id<<endl;
 				temp = head;
+				cout<<head[1]<<endl;
 				head.update_id(head[1]);
 				my_delete(&temp);
 			}
-		}
+			cout<<"out\n";
+		}*/
 };
 
 
 
 int main()
 {
-	ll i;
-	cin>>i;
-	create_buffer(i);
-	list a;
+	string filename;
+	cout<<"Enter the filename: ";
+	cin>>filename;
 
-	cin>>i;
-	while(i)
+	char input[100];
+	int memory_size, num;
+	list interger_list;
+	char ch;
+
+	FILE *ptr = fopen(filename.c_str(), "r");
+	if(ptr==NULL)
 	{
-		if(i==1)
+		cout<<"ERROR: Could not open the file. Please enter the correct filename.\n";
+		cout<<"ERROR: Aborting Program.\n";
+		return 0;
+	}
+
+	while(fscanf(ptr, "%s", input)!=EOF)
+	{
+		if(strcmp(input, "memSize")==0)
 		{
-			ll j;
-			cin>>j;
-			a.list_insert(j);
+			fscanf(ptr, "%d", &memory_size);
+			create_buffer(memory_size);
 		}
-		else if(i==2)
+		else if(strcmp(input, "insert")==0)
 		{
-			ll j;
-			cin>>j;
-			a.list_delete(j);
+			fscanf(ptr, "%d", &num);
+			interger_list.list_insert(num);
+		}
+		else if(strcmp(input, "delete")==0)
+		{
+			fscanf(ptr, "%d", &num);
+			interger_list.list_delete(num);
+		}
+		else if(strcmp(input, "show")==0)
+		{
+			interger_list.list_show();
 		}
 		else
-			a.list_show();
-
-		show_registry();
-		cin>>i;
+		{
+			cout<<"ERROR: Not a valid operation.\n";
+		}
 	}
+
 
 	delete[](buffer);
 	return 0;
