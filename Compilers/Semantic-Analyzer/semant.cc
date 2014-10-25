@@ -1,12 +1,9 @@
-
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include "semant.h"
 #include "utilities.h"
 
-using namespace std;
 
 extern int semant_debug;
 extern char *curr_filename;
@@ -88,7 +85,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 
     /* Fill this in */
     int is_Main_present = 0;
-    map<Symbol, Class_>::iterator it;
+    std::map<Symbol, Class_>::iterator it;
     install_basic_classes();
 
     for(int i=classes->first(); classes->more(i); i=classes->next(i))
@@ -121,7 +118,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
         }
 
         /* inserting the current class in the map. */
-        inheritance_graph.insert(pair<Symbol, Class_>(current_class_name, current_class));
+        inheritance_graph.insert(std::pair<Symbol, Class_>(current_class_name, current_class));
 
         /* checking if Main exists. */
         if(current_class_name==Main)
@@ -135,9 +132,9 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
         return;
     }
 
-    for(it=inheritance_graph.begin(); i!=inheritance_graph.end(); it++)
+    for(it=inheritance_graph.begin(); it!=inheritance_graph.end(); it++)
     {
-        cout<<"Class: "<<it->first<<" inherits "<<it->second->get_parent()<<endl;
+        std::cout<<"Class: "<<it->first<<" inherits "<<it->second->get_parent()<<endl;
     }
 }
 
