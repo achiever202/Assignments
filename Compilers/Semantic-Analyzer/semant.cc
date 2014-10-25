@@ -85,7 +85,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 
     /* Fill this in */
     install_basic_classes();
-	
+    
     int is_Main_present = 0;
     std::map<Symbol, Class_>::iterator it;
     for(int i=classes->first(); classes->more(i); i=classes->next(i))
@@ -137,12 +137,12 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
     {
         /* checking for cycle from this class as the first class. */
         bool is_cycle = false;
-	
-	Symbol slow_iterator, fast_iterator;
-	slow_iterator = fast_iterator = it->first;
+        
+        Symbol slow_iterator, fast_iterator;
+        slow_iterator = fast_iterator = it->first;
 
-	if(slow_iterator==Object)
-	    break;
+        if(slow_iterator==Object)
+            continue;
 
         while(1)
         {
@@ -276,8 +276,6 @@ void ClassTable::install_basic_classes() {
     inheritance_graph.insert(std::pair<Symbol, Class_>(Int, Int_class));
     inheritance_graph.insert(std::pair<Symbol, Class_>(Bool, Bool_class));
     inheritance_graph.insert(std::pair<Symbol, Class_>(Str, Str_class));
-    
-    std::cout<<"Done Successfully\n";
 }
 
 ////////////////////////////////////////////////////////////////////
