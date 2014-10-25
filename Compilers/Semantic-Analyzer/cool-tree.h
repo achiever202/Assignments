@@ -36,6 +36,9 @@ public:
    tree_node *copy()		 { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;
 
+   virtual Symbol get_name() = 0;
+   virtual Symbol get_parent() = 0;
+
 #ifdef Class__EXTRAS
    Class__EXTRAS
 #endif
