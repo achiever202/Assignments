@@ -84,10 +84,10 @@ static void initialize_constants(void)
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
 
     /* Fill this in */
+    install_basic_classes();
+	
     int is_Main_present = 0;
     std::map<Symbol, Class_>::iterator it;
-    install_basic_classes();
-
     for(int i=classes->first(); classes->more(i); i=classes->next(i))
     {
         Class_ current_class = classes->nth(i);
@@ -140,6 +140,9 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 	
 	Symbol slow_iterator, fast_iterator;
 	slow_iterator = fast_iterator = it->first;
+
+	if(slow_iterator==Object)
+	    break;
 
         while(1)
         {
@@ -267,6 +270,14 @@ void ClassTable::install_basic_classes() {
                               Str, 
                               no_expr()))),
            filename);
+
+    inheritance_graph.insert(std::pair<Symbol, Class_>(Object, Object_class));
+    inheritance_graph.insert(std::pair<Symbol, Class_>(IO, IO_class));
+    inheritance_graph.insert(std::pair<Symbol, Class_>(Int, Int_class));
+    inheritance_graph.insert(std::pair<Symbol, Class_>(Bool, Bool_class));
+    inheritance_graph.insert(std::pair<Symbol, Class_>(Str, Str_class));
+    
+    std::cout<<"Done Successfully\n";
 }
 
 ////////////////////////////////////////////////////////////////////
