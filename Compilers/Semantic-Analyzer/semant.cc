@@ -132,9 +132,39 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
         return;
     }
 
-    for(it=inheritance_graph.begin(); it!=inheritance_graph.end(); it++)
+    /* checking for cycle in the graph. */
+    for(it = inheritance_graph.begin(); it!=inheritance_graph.end(); it++)
     {
-        std::cout<<"Class: "<<it->first<<" inherits "<<it->second->get_parent()<<endl;
+        /* checking for cycle from this class as the first class. */
+        bool is_cycle = false;
+	
+	Symbol slow_iterator, fast_iterator;
+	slow_iterator = fast_iterator = it->first;
+
+        while(1)
+        {
+            slow_iterator = inheritance_graph.find(slow_iterator)->second->get_parent();
+            fast_iterator = inheritance_graph.find(fast_iterator)->second->get_parent();
+            if(fast_iterator!=Object)
+            {
+                fast_iterator = inheritance_graph.find(fast_iterator)->second->get_parent();
+            }
+
+            if(slow_iterator==Object || fast_iterator==Object)
+                break;
+
+            if(slow_iterator==fast_iterator)
+            {
+                is_cycle = true;
+                break;
+            }
+        }
+
+        if(is_cycle)
+        {
+            semant_error(it->second)<<"inheritance cycle found in class "<<it->first<<".\n";
+            return;
+        }
     }
 }
 
@@ -163,14 +193,14 @@ void ClassTable::install_basic_classes() {
     // are already built in to the runtime system.
 
     Class_ Object_class =
-	class_(Object, 
-	       No_class,
-	       append_Features(
-			       append_Features(
-					       single_Features(method(cool_abort, nil_Formals(), Object, no_expr())),
-					       single_Features(method(type_name, nil_Formals(), Str, no_expr()))),
-			       single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
-	       filename);
+    class_(Object, 
+           No_class,
+           append_Features(
+                   append_Features(
+                           single_Features(method(cool_abort, nil_Formals(), Object, no_expr())),
+                           single_Features(method(type_name, nil_Formals(), Str, no_expr()))),
+                   single_Features(method(copy, nil_Formals(), SELF_TYPE, no_expr()))),
+           filename);
 
     // 
     // The IO class inherits from Object. Its methods are
@@ -180,34 +210,34 @@ void ClassTable::install_basic_classes() {
     //        in_int() : Int                      "   an int     "  "     "
     //
     Class_ IO_class = 
-	class_(IO, 
-	       Object,
-	       append_Features(
-			       append_Features(
-					       append_Features(
-							       single_Features(method(out_string, single_Formals(formal(arg, Str)),
-										      SELF_TYPE, no_expr())),
-							       single_Features(method(out_int, single_Formals(formal(arg, Int)),
-										      SELF_TYPE, no_expr()))),
-					       single_Features(method(in_string, nil_Formals(), Str, no_expr()))),
-			       single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
-	       filename);  
+    class_(IO, 
+           Object,
+           append_Features(
+                   append_Features(
+                           append_Features(
+                                   single_Features(method(out_string, single_Formals(formal(arg, Str)),
+                                              SELF_TYPE, no_expr())),
+                                   single_Features(method(out_int, single_Formals(formal(arg, Int)),
+                                              SELF_TYPE, no_expr()))),
+                           single_Features(method(in_string, nil_Formals(), Str, no_expr()))),
+                   single_Features(method(in_int, nil_Formals(), Int, no_expr()))),
+           filename);  
 
     //
     // The Int class has no methods and only a single attribute, the
     // "val" for the integer. 
     //
     Class_ Int_class =
-	class_(Int, 
-	       Object,
-	       single_Features(attr(val, prim_slot, no_expr())),
-	       filename);
+    class_(Int, 
+           Object,
+           single_Features(attr(val, prim_slot, no_expr())),
+           filename);
 
     //
     // Bool also has only the "val" slot.
     //
     Class_ Bool_class =
-	class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename);
+    class_(Bool, Object, single_Features(attr(val, prim_slot, no_expr())),filename);
 
     //
     // The class Str has a number of slots and operations:
@@ -218,25 +248,25 @@ void ClassTable::install_basic_classes() {
     //       substr(arg: Int, arg2: Int): Str     substring selection
     //       
     Class_ Str_class =
-	class_(Str, 
-	       Object,
-	       append_Features(
-			       append_Features(
-					       append_Features(
-							       append_Features(
-									       single_Features(attr(val, Int, no_expr())),
-									       single_Features(attr(str_field, prim_slot, no_expr()))),
-							       single_Features(method(length, nil_Formals(), Int, no_expr()))),
-					       single_Features(method(concat, 
-								      single_Formals(formal(arg, Str)),
-								      Str, 
-								      no_expr()))),
-			       single_Features(method(substr, 
-						      append_Formals(single_Formals(formal(arg, Int)), 
-								     single_Formals(formal(arg2, Int))),
-						      Str, 
-						      no_expr()))),
-	       filename);
+    class_(Str, 
+           Object,
+           append_Features(
+                   append_Features(
+                           append_Features(
+                                   append_Features(
+                                           single_Features(attr(val, Int, no_expr())),
+                                           single_Features(attr(str_field, prim_slot, no_expr()))),
+                                   single_Features(method(length, nil_Formals(), Int, no_expr()))),
+                           single_Features(method(concat, 
+                                      single_Formals(formal(arg, Str)),
+                                      Str, 
+                                      no_expr()))),
+                   single_Features(method(substr, 
+                              append_Formals(single_Formals(formal(arg, Int)), 
+                                     single_Formals(formal(arg2, Int))),
+                              Str, 
+                              no_expr()))),
+           filename);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -296,9 +326,7 @@ void program_class::semant()
     /* some semantic analysis code may go here */
 
     if (classtable->errors()) {
-	cerr << "Compilation halted due to static semantic errors." << endl;
-	exit(1);
+    cerr << "Compilation halted due to static semantic errors." << endl;
+    exit(1);
     }
 }
-
-
