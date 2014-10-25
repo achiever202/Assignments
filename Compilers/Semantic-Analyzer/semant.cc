@@ -146,10 +146,26 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 
         while(1)
         {
+            if(inheritance_graph.find(inheritance_graph.find(slow_iterator)->second->get_parent())==inheritance_graph.end())
+            {
+                semant_error()<<"Class "<<slow_iterator<<" inherits from an undefined class "<<inheritance_graph.find(slow_iterator)->second->get_parent()<<".\n";
+                return;
+            }
             slow_iterator = inheritance_graph.find(slow_iterator)->second->get_parent();
+            
+            if(inheritance_graph.find(inheritance_graph.find(fast_iterator)->second->get_parent())==inheritance_graph.end())
+            {
+                semant_error()<<"Class "<<fast_iterator<<" inherits from an undefined class "<<inheritance_graph.find(fast_iterator)->second->get_parent()<<".\n";
+                return;
+            }
             fast_iterator = inheritance_graph.find(fast_iterator)->second->get_parent();
             if(fast_iterator!=Object)
             {
+                if(inheritance_graph.find(inheritance_graph.find(fast_iterator)->second->get_parent())==inheritance_graph.end())
+                {
+                    semant_error()<<"Class "<<fast_iterator<<" inherits from an undefined class "<<inheritance_graph.find(fast_iterator)->second->get_parent()<<".\n";
+                    return;
+                }
                 fast_iterator = inheritance_graph.find(fast_iterator)->second->get_parent();
             }
 
