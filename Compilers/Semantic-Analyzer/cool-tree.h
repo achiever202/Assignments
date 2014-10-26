@@ -19,7 +19,7 @@ typedef class Program_class *Program;
 
 class Program_class : public tree_node {
 public:
-   tree_node *copy()		 { return copy_Program(); }
+   tree_node *copy()     { return copy_Program(); }
    virtual Program copy_Program() = 0;
 
 #ifdef Program_EXTRAS
@@ -33,11 +33,13 @@ typedef class Class__class *Class_;
 
 class Class__class : public tree_node {
 public:
-   tree_node *copy()		 { return copy_Class_(); }
+   tree_node *copy()     { return copy_Class_(); }
    virtual Class_ copy_Class_() = 0;
 
+   virtual void dump(ostream &stream, int n) = 0;
    virtual Symbol get_name() = 0;
    virtual Symbol get_parent() = 0;
+   virtual Features get_features() = 0;
 
 #ifdef Class__EXTRAS
    Class__EXTRAS
@@ -50,8 +52,11 @@ typedef class Feature_class *Feature;
 
 class Feature_class : public tree_node {
 public:
-   tree_node *copy()		 { return copy_Feature(); }
+   tree_node *copy()     { return copy_Feature(); }
    virtual Feature copy_Feature() = 0;
+
+   virtual void add_to_symbol_table(Feature, Class_) = 0;
+   virtual Formals get_formals() = 0;
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -64,7 +69,7 @@ typedef class Formal_class *Formal;
 
 class Formal_class : public tree_node {
 public:
-   tree_node *copy()		 { return copy_Formal(); }
+   tree_node *copy()     { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
 
 #ifdef Formal_EXTRAS
@@ -78,7 +83,7 @@ typedef class Expression_class *Expression;
 
 class Expression_class : public tree_node {
 public:
-   tree_node *copy()		 { return copy_Expression(); }
+   tree_node *copy()     { return copy_Expression(); }
    virtual Expression copy_Expression() = 0;
 
 #ifdef Expression_EXTRAS
@@ -92,7 +97,7 @@ typedef class Case_class *Case;
 
 class Case_class : public tree_node {
 public:
-   tree_node *copy()		 { return copy_Case(); }
+   tree_node *copy()     { return copy_Case(); }
    virtual Case copy_Case() = 0;
 
 #ifdef Case_EXTRAS
@@ -175,6 +180,11 @@ public:
       return parent;
    }
 
+   Features get_features()
+   {
+      return features;
+   }
+
 #ifdef Class__SHARED_EXTRAS
    Class__SHARED_EXTRAS
 #endif
@@ -201,6 +211,12 @@ public:
    Feature copy_Feature();
    void dump(ostream& stream, int n);
 
+   void add_to_symbol_table(Feature, Class_);
+   Formals get_formals()
+   {
+      return formals;
+   }
+
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
@@ -224,6 +240,12 @@ public:
    }
    Feature copy_Feature();
    void dump(ostream& stream, int n);
+
+   void add_to_symbol_table(Feature, Class_);
+   Formals get_formals()
+   {
+      return NULL;
+   }
 
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
