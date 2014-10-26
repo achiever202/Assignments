@@ -57,6 +57,7 @@ public:
 
    virtual void add_to_symbol_table(Feature, Class_) = 0;
    virtual Formals get_formals() = 0;
+   virtual Symbol get_return_type() = 0;
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -71,6 +72,8 @@ class Formal_class : public tree_node {
 public:
    tree_node *copy()     { return copy_Formal(); }
    virtual Formal copy_Formal() = 0;
+
+   virtual Symbol get_type() = 0;
 
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
@@ -217,6 +220,11 @@ public:
       return formals;
    }
 
+   Symbol get_return_type()
+   {
+      return return_type;
+   }
+
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
@@ -247,6 +255,11 @@ public:
       return NULL;
    }
 
+   Symbol get_return_type()
+   {
+      return type_decl;
+   }
+
 #ifdef Feature_SHARED_EXTRAS
    Feature_SHARED_EXTRAS
 #endif
@@ -268,6 +281,11 @@ public:
    }
    Formal copy_Formal();
    void dump(ostream& stream, int n);
+
+   Symbol get_type()
+   {
+      return type_decl;
+   }
 
 #ifdef Formal_SHARED_EXTRAS
    Formal_SHARED_EXTRAS
