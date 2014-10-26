@@ -349,6 +349,24 @@ void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class
             classtable->semant_error(cur_class)<<"Incompatible number of formal parameters in redefined method "<<name<<".\n";
             return;  
         }
+
+        for(int i=formals->first(); formals->more(i); i=formals->next(i))
+        {
+            Formal current_formal = formals->nth(i);
+            Formal inherited_formal = inherited_formals->nth(i);
+
+            if(current_formal->get_type()!=inherited_formal->get_type())
+            {
+                classtable->semant_error(cur_class)<<"In redefined method "<<name<<", parameter type "<<current_formal->get_type()<<" is different from original type "<<inherited_formal->get_type()<<".\n";
+                return;
+            }
+        }
+
+        if(return_type!=inherited_feature->get_return_type())
+        {
+            classtable->semant_error(cur_class)<<"In redefined method "<<name<<", return type "<<return_type<<" is different from original return type "<<inherited_feature->get_return_type()<<".\n";
+            return;
+        }
     }
 
     function_table->addid(name, new Feature(current_feature));
