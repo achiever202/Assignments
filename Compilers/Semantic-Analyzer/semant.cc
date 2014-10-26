@@ -335,7 +335,21 @@ ostream& ClassTable::semant_error()
 
 Symbol assign_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    Symbol *left_type = attribute_table->lookup(name);
+    if(left_type==NULL)
+    {
+        classtable->semant_error(cur_class)<<"Assignment to undeclared variable "<<name<<".\n";
+        return Object;
+    }
+
+    Symbol right_type = expr->get_expression_type(cur_class);
+    if(*left_type!=right_type)
+    {
+        classtable->semant_error(cur_class)<<"Type "<<right_type<<" of assigned expression does not conform to declared type "<<*left_type<<" of identifier "<<name<<".\n";
+        return Object;
+    }
+
+    return *left_type;
 }
 
 Symbol static_dispatch_class::get_expression_type(Class_ cur_class)
