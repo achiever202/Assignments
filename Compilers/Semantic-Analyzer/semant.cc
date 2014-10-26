@@ -333,6 +333,162 @@ ostream& ClassTable::semant_error()
     return error_stream;
 } 
 
+Symbol assign_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol static_dispatch_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol dispatch_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol cond_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol loop_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol typcase_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol block_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol let_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol plus_class::get_expression_type(Class_ cur_class)
+{
+    if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
+    {
+        classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" + "<<e2->get_expression_type(cur_class)<<".\n";
+        return Object;
+    }
+    return Int;
+}
+
+Symbol sub_class::get_expression_type(Class_ cur_class)
+{
+    if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
+    {
+        classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" - "<<e2->get_expression_type(cur_class)<<".\n";
+        return Object;
+    }
+    return Int;
+}
+
+Symbol mul_class::get_expression_type(Class_ cur_class)
+{
+    if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
+    {
+        classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" * "<<e2->get_expression_type(cur_class)<<".\n";
+        return Object;
+    }
+    return Int;
+}
+
+Symbol divide_class::get_expression_type(Class_ cur_class)
+{
+    if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
+    {
+        classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" / "<<e2->get_expression_type(cur_class)<<".\n";
+        return Object;
+    }
+    return Int;
+}
+
+Symbol neg_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol lt_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol eq_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol leq_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol comp_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol int_const_class::get_expression_type(Class_ cur_class)
+{
+    return Int;
+}
+
+Symbol bool_const_class::get_expression_type(Class_ cur_class)
+{
+    return Bool;
+}
+
+Symbol string_const_class::get_expression_type(Class_ cur_class)
+{
+    return Str;
+}
+
+Symbol new__class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol isvoid_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol no_expr_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+Symbol object_class::get_expression_type(Class_ cur_class)
+{
+    return No_type;
+}
+
+void method_class::check_feature(Class_ cur_class)
+{
+    expr->get_expression_type(cur_class);
+}
+
+void attr_class::check_feature(Class_ cur_class)
+{
+    Symbol assigned_type = init->get_expression_type(cur_class);
+
+    if(assigned_type!=No_type && assigned_type!=type_decl)
+    {
+        classtable->semant_error(cur_class)<<"Inferred type "<<assigned_type<<" of initialization of attribute "<<name<<" does not conform to declared type "<<type_decl<<".\n";
+        return;
+    }
+}
+
 void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class)
 {
     bool is_error=false;
@@ -451,6 +607,21 @@ void program_class::semant()
         function_table = new SymbolTable<Symbol, Feature>();
         attribute_table = new SymbolTable<Symbol, Symbol>();
         populate_symbol_tables(cur_class);
+
+        Features features = cur_class->get_features();
+        for(int i=features->first(); features->more(i); i=features->next(i))
+        {
+            Feature feature = features->nth(i);
+
+            attribute_table->enterscope();
+            function_table->enterscope();
+
+            feature->check_feature(cur_class);
+
+            attribute_table->exitscope();
+            function_table->exitscope();
+
+        }
     }
 
     if (classtable->errors()) {
