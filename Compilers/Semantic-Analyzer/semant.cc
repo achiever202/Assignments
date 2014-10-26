@@ -92,6 +92,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
     install_basic_classes();
     
     int is_Main_present = 0;
+    int is_error = 0;
     std::map<Symbol, Class_>::iterator it;
     for(int i=classes->first(); classes->more(i); i=classes->next(i))
     {
@@ -105,26 +106,29 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
         if(it!=inheritance_graph.end())
         {
             semant_error(current_class)<<"Class "<<current_class_name<<" was previously defined.\n";
-            return;
         }
 
         /* checking if the class doesnt inherit itself. */
         if(current_class_name==current_class_parent)
         {
-            semant_error(current_class)<<"Class "<<current_class_name<<" cannot inherit itself.\n";
-            return;
+            semant_error(current_class)<<"Class "<<current_class_name<<", or an ancestor of "<<current_class_name<<", is involved in an inheritance cycle"<<endl;
+        }
+
+        else if(current_class_name==SELF_TYPE)
+        {
+            semant_error(current_class)<<"Redifination of basic class SELF_TYPE\n";   
         }
 
         /* checking if the class doesn't inherit the basic types. */
-        if(current_class_parent==Bool || current_class_parent==Int || current_class_parent==Str)
+        else if(current_class_parent==Bool || current_class_parent==Int || current_class_parent==Str || current_class_parent==SELF_TYPE)
         {
-            semant_error(current_class)<<"Class "<<current_class_name<<" cannot inherit the basic class "<<current_class_parent<<".\n";
-            return;
+            semant_error(current_class)<<"Class "<<current_class_name<<" cannot inherit class "<<current_class_parent<<".\n";
         }
 
         /* inserting the current class in the map. */
-        inheritance_graph.insert(std::pair<Symbol, Class_>(current_class_name, current_class));
-
+        else
+            inheritance_graph.insert(std::pair<Symbol, Class_>(current_class_name, current_class));
+        
         /* checking if Main exists. */
         if(current_class_name==Main)
             is_Main_present = 1;
@@ -134,7 +138,6 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
     if(is_Main_present==0)
     {
         semant_error()<<"Class Main is not defined.\n";
-        return;
     }
 
     /* checking for cycle in the graph. */
@@ -153,14 +156,14 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
         {
             if(inheritance_graph.find(inheritance_graph.find(slow_iterator)->second->get_parent())==inheritance_graph.end())
             {
-                semant_error()<<"Class "<<slow_iterator<<" inherits from an undefined class "<<inheritance_graph.find(slow_iterator)->second->get_parent()<<".\n";
+                semant_error(inheritance_graph.find(slow_iterator)->second)<<"Class "<<slow_iterator<<" inherits from an undefined class "<<inheritance_graph.find(slow_iterator)->second->get_parent()<<".\n";
                 return;
             }
             slow_iterator = inheritance_graph.find(slow_iterator)->second->get_parent();
             
             if(inheritance_graph.find(inheritance_graph.find(fast_iterator)->second->get_parent())==inheritance_graph.end())
             {
-                semant_error()<<"Class "<<fast_iterator<<" inherits from an undefined class "<<inheritance_graph.find(fast_iterator)->second->get_parent()<<".\n";
+                semant_error(inheritance_graph.find(fast_iterator)->second)<<"Class "<<fast_iterator<<" inherits from an undefined class "<<inheritance_graph.find(fast_iterator)->second->get_parent()<<".\n";
                 return;
             }
             fast_iterator = inheritance_graph.find(fast_iterator)->second->get_parent();
@@ -168,7 +171,7 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
             {
                 if(inheritance_graph.find(inheritance_graph.find(fast_iterator)->second->get_parent())==inheritance_graph.end())
                 {
-                    semant_error()<<"Class "<<fast_iterator<<" inherits from an undefined class "<<inheritance_graph.find(fast_iterator)->second->get_parent()<<".\n";
+                    semant_error(inheritance_graph.find(fast_iterator)->second)<<"Class "<<fast_iterator<<" inherits from an undefined class "<<inheritance_graph.find(fast_iterator)->second->get_parent()<<".\n";
                     return;
                 }
                 fast_iterator = inheritance_graph.find(fast_iterator)->second->get_parent();
@@ -186,12 +189,11 @@ ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) 
 
         if(is_cycle)
         {
-            semant_error(it->second)<<"inheritance cycle found in class "<<it->first<<".\n";
-            return;
+            semant_error(it->second)<<"Class "<<it->first<<", or an ancestor of "<<it->first<<", is involved in an inheritance cycle"<<endl;
         }
     }
-}
 
+}
 void ClassTable::install_basic_classes() {
 
     // The tree package uses these globals to annotate the classes built below.
@@ -333,6 +335,7 @@ ostream& ClassTable::semant_error()
 
 void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class)
 {
+    bool is_error=false;
     if(function_table->probe(name)!=NULL)
     {
         classtable->semant_error(cur_class)<<"Method "<<name<<" is multiply defined.\n";
@@ -358,7 +361,8 @@ void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class
             if(current_formal->get_type()!=inherited_formal->get_type())
             {
                 classtable->semant_error(cur_class)<<"In redefined method "<<name<<", parameter type "<<current_formal->get_type()<<" is different from original type "<<inherited_formal->get_type()<<".\n";
-                return;
+                is_error=true;
+                break;
             }
         }
 
@@ -368,8 +372,8 @@ void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class
             return;
         }
     }
-
-    function_table->addid(name, new Feature(current_feature));
+    if(!is_error)
+        function_table->addid(name, new Feature(current_feature));
 
 }
 
@@ -435,6 +439,10 @@ void program_class::semant()
     /* ClassTable constructor may do some semantic analysis */
     classtable = new ClassTable(classes);
 
+    if (classtable->errors()) {
+    cerr << "Compilation halted due to static semantic errors." << endl;
+    exit(1);
+    }
     /* some semantic analysis code may go here */
     for(int i=classes->first(); classes->more(i); i=classes->next(i))
     {
