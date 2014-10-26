@@ -79,8 +79,13 @@ static void initialize_constants(void)
     val         = idtable.add_string("_val");
 }
 
+/* symbol tables for semantic checking. */
+SymbolTable<Symbol, Feature> *function_table;
+SymbolTable<Symbol, Symbol> *attribute_table;
 
+ClassTable *classtable;
 
+/* TO DO - not return after semant_error() */
 ClassTable::ClassTable(Classes classes) : semant_errors(0) , error_stream(cerr) {
 
     /* Fill this in */
@@ -326,7 +331,71 @@ ostream& ClassTable::semant_error()
     return error_stream;
 } 
 
+void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class)
+{
+    if(function_table->probe(name)!=NULL)
+    {
+        classtable->semant_error(cur_class)<<"Method "<<name<<" is multiply defined.\n";
+        return;
+    }
 
+    if(function_table->lookup(name)!= NULL)
+    {
+        Feature inherited_feature = *(function_table->lookup(name));
+        Formals inherited_formals = inherited_feature->get_formals();
+
+        if(formals->len()!=inherited_formals->len())
+        {
+            classtable->semant_error(cur_class)<<"Incompatible number of formal parameters in redefined method "<<name<<".\n";
+            return;  
+        }
+    }
+
+    function_table->addid(name, new Feature(current_feature));
+
+}
+
+void attr_class::add_to_symbol_table(Feature current_feature, Class_ cur_class)
+{
+    if(attribute_table->probe(name)!=NULL)
+    {
+        classtable->semant_error(cur_class)<<"Attribute "<<name<<" is multiply defined in class.\n";
+        return;
+    }
+
+    if(attribute_table->lookup(name)!=NULL)
+    {
+        classtable->semant_error(cur_class)<<"Attribute "<<name<<" is an attribute of an inherited class.\n";
+    }
+
+    if(name==self)
+    {
+        classtable->semant_error(cur_class)<<"'self' cannot be the name of an attribute.\n";
+        return;
+    }
+
+    attribute_table->addid(name, new Symbol(type_decl));
+}
+
+void populate_symbol_tables(Class_ cur_class)
+{
+    Symbol parent = cur_class->get_parent();
+    if(parent!=No_class)
+    {
+        populate_symbol_tables(classtable->get_inheritance_graph().find(parent)->second);
+    }
+
+    attribute_table->enterscope();
+    function_table->enterscope();
+
+    Features features = cur_class->get_features();
+
+    for(int i=features->first(); features->more(i); i=features->next(i))
+    {
+        Feature feature = features->nth(i);
+        feature->add_to_symbol_table(features->nth(i), cur_class);
+    }
+}
 
 /*   This is the entry point to the semantic checker.
 
@@ -346,9 +415,17 @@ void program_class::semant()
     initialize_constants();
 
     /* ClassTable constructor may do some semantic analysis */
-    ClassTable *classtable = new ClassTable(classes);
+    classtable = new ClassTable(classes);
 
     /* some semantic analysis code may go here */
+    for(int i=classes->first(); classes->more(i); i=classes->next(i))
+    {
+        /* getting the current class. */
+        Class_ cur_class = classes->nth(i);
+        function_table = new SymbolTable<Symbol, Feature>();
+        attribute_table = new SymbolTable<Symbol, Symbol>();
+        populate_symbol_tables(cur_class);
+    }
 
     if (classtable->errors()) {
     cerr << "Compilation halted due to static semantic errors." << endl;
