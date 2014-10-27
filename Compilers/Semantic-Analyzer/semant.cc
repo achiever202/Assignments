@@ -331,7 +331,31 @@ ostream& ClassTable::semant_error()
 {                                                 
     semant_errors++;                            
     return error_stream;
-} 
+}
+
+Symbol get_least_common_ancestor_type(Symbol then_type, Symbol else_type)
+{
+    std::map<Symbol, Class_>inheritance_graph = classtable->get_inheritance_graph();
+    
+    Symbol then_type_temp = then_type, else_type_temp = else_type;
+    while(then_type_temp!=else_type_temp)
+    {
+        while(else_type_temp!=Object)
+        {
+            else_type_temp = inheritance_graph.find(else_type_temp)->second->get_parent();
+            if(then_type_temp==else_type_temp)
+                break;
+        }
+
+        if(then_type_temp==else_type_temp)
+            break;
+
+        then_type_temp = inheritance_graph.find(then_type_temp)->second->get_parent();
+        else_type_temp = else_type;
+    }
+
+    return then_type_temp;
+}
 
 Symbol assign_class::get_expression_type(Class_ cur_class)
 {
@@ -349,27 +373,49 @@ Symbol assign_class::get_expression_type(Class_ cur_class)
         return Object;
     }
 
+    type = *left_type;
     return *left_type;
 }
 
 Symbol static_dispatch_class::get_expression_type(Class_ cur_class)
 {
+    type = No_type;
     return No_type;
 }
 
 Symbol dispatch_class::get_expression_type(Class_ cur_class)
 {
+    type = No_type;
     return No_type;
 }
 
 Symbol cond_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    Symbol condition_type = pred->get_expression_type(cur_class);
+    if(condition_type!=Bool)
+    {
+        classtable->semant_error(cur_class)<<"Predicate of 'if' does not have type Bool.\n";
+        return Object;   
+    }
+
+    Symbol return_type = get_least_common_ancestor_type(then_exp->get_expression_type(cur_class), else_exp->get_expression_type(cur_class));
+    type = return_type;
+    return type;
 }
 
 Symbol loop_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    Symbol condition_type = pred->get_expression_type(cur_class);
+    if(condition_type!=Bool)
+    {
+        classtable->semant_error(cur_class)<<"Predicate of 'if' does not have type Bool.\n";
+        return Object;   
+    }
+
+    Symbol body_type = body->get_expression_type(cur_class);
+
+    type = Object;
+    return Object;
 }
 
 Symbol typcase_class::get_expression_type(Class_ cur_class)
@@ -379,7 +425,15 @@ Symbol typcase_class::get_expression_type(Class_ cur_class)
 
 Symbol block_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    Symbol body_type;
+    for(int i=body->first(); body->more(i); i=body->next(i))
+    {
+        Expression current_expression = body->nth(i);
+        body_type = current_expression->get_expression_type(cur_class);
+    }
+
+    type = body_type;
+    return body_type;
 }
 
 Symbol let_class::get_expression_type(Class_ cur_class)
@@ -429,41 +483,79 @@ Symbol divide_class::get_expression_type(Class_ cur_class)
 
 Symbol neg_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    if(e1->get_expression_type(cur_class)!=Int)
+    {
+        classtable->semant_error(cur_class)<<"Argument of '~' has type "<<e1->get_expression_type(cur_class)<<" instead of Int.\n";
+        return Object;
+    }
+
+    type = Int;
+    return Int;
 }
 
 Symbol lt_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
+    {
+        classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" < "<<e2->get_expression_type(cur_class)<<".\n";
+        return Object;
+    }
+
+    type = Bool;
+    return Bool;
 }
 
 Symbol eq_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
+    {
+        classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" = "<<e2->get_expression_type(cur_class)<<".\n";
+        return Object;
+    }
+
+    type = Bool;
+    return Bool;
 }
 
 Symbol leq_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
+    {
+        classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" <= "<<e2->get_expression_type(cur_class)<<".\n";
+        return Object;
+    }
+
+    type = Bool;
+    return Bool;
 }
 
 Symbol comp_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    if(e1->get_expression_type(cur_class)!=Bool)
+    {
+        classtable->semant_error(cur_class)<<"Argument of 'not' has type "<<e1->get_expression_type(cur_class)<<" instead of Bool.\n";
+        return Object;
+    }
+
+    type = Bool;
+    return Bool;
 }
 
 Symbol int_const_class::get_expression_type(Class_ cur_class)
 {
+    type = Int;
     return Int;
 }
 
 Symbol bool_const_class::get_expression_type(Class_ cur_class)
 {
+    type = Bool;
     return Bool;
 }
 
 Symbol string_const_class::get_expression_type(Class_ cur_class)
 {
+    type = Str;
     return Str;
 }
 
