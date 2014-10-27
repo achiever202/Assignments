@@ -472,7 +472,6 @@ Symbol dispatch_class::get_expression_type(Class_ cur_class)
     Feature called_feature = get_method_feature(name, calling_type);
     Formals called_formals = called_feature->get_formals();
 
-    //std::cout<<"here in "<<name<<endl;
     if(called_formals->len()!=actual->len())
     {
         classtable->semant_error(cur_class)<<"Method "<<name<<" called with wrong number of arguments.\n";
@@ -484,9 +483,6 @@ Symbol dispatch_class::get_expression_type(Class_ cur_class)
     {
         Expression current_expression = actual->nth(i);
         Formal current_formal = called_formals->nth(i);
-
-        //std::cout<<"Actual: "<<current_expression->get_expression_type(cur_class)<<endl;
-        //std::cout<<"Formal: "<<current_formal->get_type()<<" "<<current_formal->get_name()<<endl;
 
         if(current_expression->get_expression_type(cur_class)!=current_formal->get_type())
         {
@@ -783,7 +779,50 @@ Symbol object_class::get_expression_type(Class_ cur_class)
 
 void method_class::check_feature(Class_ cur_class)
 {
-    expr->get_expression_type(cur_class);
+    std::map<Symbol, Class_>inheritance_graph = classtable->get_inheritance_graph();
+    bool is_error = false;
+
+    Formals formals = get_formals();
+    for(int i=formals->first(); formals->more(i); i=formals->next(i))
+    {
+        Formal current_formal = formals->nth(i);
+
+        if(current_formal->get_name()==self)
+        {
+            classtable->semant_error(cur_class)<<"'self' cannot be the name of a formal parameter.\n";
+            is_error = true;
+        }
+
+        if(attribute_table->probe(current_formal->get_name())!=NULL)
+        {
+            classtable->semant_error(cur_class)<<"Formal parameter "<<current_formal->get_name()<<" is multiply defined.\n";
+            is_error = true;
+        }
+
+        if(inheritance_graph.find(current_formal->get_type())==inheritance_graph.end())
+        {
+            classtable->semant_error(cur_class)<<"Class "<<current_formal->get_type()<<" of formal parameter "<<current_formal->get_name()<<" is undefined.\n";
+            is_error = true; 
+        }
+
+        if(!is_error)
+            attribute_table->addid(current_formal->get_name(), new Symbol(current_formal->get_type()));
+    }
+
+    Symbol body_type = expr->get_expression_type(cur_class);
+    Symbol method_return_type = return_type;
+
+    if(method_return_type==SELF_TYPE)
+        method_return_type = cur_class->get_name();
+
+    if(body_type==SELF_TYPE)
+        body_type = cur_class->get_name();
+
+    if(!(return_type==body_type || check_ancestor(body_type, method_return_type)))
+    {
+        classtable->semant_error(cur_class)<<"Inferred return type "<<body_type<<" of method a does not conform to declared return type "<<return_type<<".\n";
+        return;
+    }
 }
 
 void attr_class::check_feature(Class_ cur_class)
