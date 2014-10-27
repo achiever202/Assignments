@@ -438,7 +438,23 @@ Symbol block_class::get_expression_type(Class_ cur_class)
 
 Symbol let_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    if(identifier==self)
+    {
+        classtable->semant_error(cur_class)<<"'self' cannot be bound in a 'let' expression.\n";
+        return Object;
+    }
+
+    if(init->get_expression_type(cur_class)!=No_type && type_decl!=init->get_expression_type(cur_class))
+    {
+        classtable->semant_error(cur_class)<<"Inferred type "<<init->get_expression_type(cur_class)<<" of initialization of "<<identifier<<" does not conform to identifier's declared type "<<type_decl<<".\n";
+        return Object;
+    }
+
+    attribute_table->enterscope();
+    attribute_table->addid(identifier, new Symbol(type_decl));
+    type = body->get_expression_type(cur_class);
+    attribute_table->exitscope();
+    return type;
 }
 
 Symbol plus_class::get_expression_type(Class_ cur_class)
@@ -448,6 +464,8 @@ Symbol plus_class::get_expression_type(Class_ cur_class)
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" + "<<e2->get_expression_type(cur_class)<<".\n";
         return Object;
     }
+
+    type = Int;
     return Int;
 }
 
@@ -458,6 +476,8 @@ Symbol sub_class::get_expression_type(Class_ cur_class)
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" - "<<e2->get_expression_type(cur_class)<<".\n";
         return Object;
     }
+
+    type = Int;
     return Int;
 }
 
@@ -468,6 +488,8 @@ Symbol mul_class::get_expression_type(Class_ cur_class)
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" * "<<e2->get_expression_type(cur_class)<<".\n";
         return Object;
     }
+
+    type = Int;
     return Int;
 }
 
@@ -478,6 +500,8 @@ Symbol divide_class::get_expression_type(Class_ cur_class)
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" / "<<e2->get_expression_type(cur_class)<<".\n";
         return Object;
     }
+
+    type = Int;
     return Int;
 }
 
