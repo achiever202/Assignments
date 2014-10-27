@@ -59,6 +59,8 @@ public:
    virtual Formals get_formals() = 0;
    virtual Symbol get_return_type() = 0;
    virtual void check_feature(Class_) = 0;
+   virtual bool is_method() = 0;
+   virtual Symbol get_name() = 0;
 
 #ifdef Feature_EXTRAS
    Feature_EXTRAS
@@ -75,6 +77,7 @@ public:
    virtual Formal copy_Formal() = 0;
 
    virtual Symbol get_type() = 0;
+   virtual Symbol get_name() = 0;
 
 #ifdef Formal_EXTRAS
    Formal_EXTRAS
@@ -222,6 +225,12 @@ public:
    void dump(ostream& stream, int n);
    void check_feature(Class_);
    void add_to_symbol_table(Feature, Class_);
+
+   Symbol get_name()
+   {
+      return name;
+   }
+
    Formals get_formals()
    {
       return formals;
@@ -230,6 +239,11 @@ public:
    Symbol get_return_type()
    {
       return return_type;
+   }
+
+   bool is_method()
+   {
+      return true;
    }
 
 #ifdef Feature_SHARED_EXTRAS
@@ -257,6 +271,12 @@ public:
    void dump(ostream& stream, int n);
    void check_feature(Class_);
    void add_to_symbol_table(Feature, Class_);
+
+   Symbol get_name()
+   {
+      return name;
+   }
+
    Formals get_formals()
    {
       return NULL;
@@ -265,6 +285,11 @@ public:
    Symbol get_return_type()
    {
       return type_decl;
+   }
+
+   bool is_method()
+   {
+      return false;
    }
 
 #ifdef Feature_SHARED_EXTRAS
@@ -288,6 +313,11 @@ public:
    }
    Formal copy_Formal();
    void dump(ostream& stream, int n);
+
+   Symbol get_name()
+   {
+      return name;
+   }
 
    Symbol get_type()
    {
