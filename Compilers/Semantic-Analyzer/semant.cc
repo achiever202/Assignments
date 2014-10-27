@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include "semant.h"
 #include "utilities.h"
-
+#include <vector>
 
 extern int semant_debug;
 extern char *curr_filename;
@@ -420,7 +420,49 @@ Symbol loop_class::get_expression_type(Class_ cur_class)
 
 Symbol typcase_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    std::map<Symbol, Class_>inheritance_graph = classtable->get_inheritance_graph();
+
+    expr->get_expression_type(cur_class);
+
+    std::vector<Symbol> type_map;
+    std::vector<Symbol>::iterator it;
+    for(int i=cases->first(); cases->more(i); i=cases->next(i))
+    {
+        Case current_case = cases->nth(i);
+
+        Symbol current_type = current_case->get_type();
+
+        /* checking if current_type is defined. */
+        if(inheritance_graph.find(current_type)==inheritance_graph.end())
+        {
+            classtable->semant_error(cur_class)<<"Class "<<current_type<<" of case branch is undefined.\n";
+            return Object;  
+        }
+
+        for(int i=0; i<type_map.size(); i++)
+        {
+            if(type_map[i]==current_type)
+            {
+                classtable->semant_error(cur_class)<<"Duplicate branch "<<current_type<<" in case statement.\n";
+                return Object;
+            }
+        }
+
+        type_map.push_back(current_type);
+
+        attribute_table->enterscope();
+        attribute_table->addid(current_case->get_name(), new Symbol(current_type));
+        current_case->get_expression()->get_expression_type(cur_class);
+        attribute_table->exitscope();
+    }
+
+    Symbol return_type = type_map[0];
+
+    for(int i=1; i<type_map.size(); i++)
+        return_type = get_least_common_ancestor_type(return_type, type_map[i]);
+
+    type = return_type;
+    return return_type;
 }
 
 Symbol block_class::get_expression_type(Class_ cur_class)
