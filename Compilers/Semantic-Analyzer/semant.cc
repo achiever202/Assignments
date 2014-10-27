@@ -357,6 +357,46 @@ Symbol get_least_common_ancestor_type(Symbol then_type, Symbol else_type)
     return then_type_temp;
 }
 
+bool check_ancestor(Symbol child, Symbol parent)
+{
+    std::map<Symbol, Class_> inheritance_graph = classtable->get_inheritance_graph();
+
+    while(child!=parent)
+    {
+        if(child==Object)
+            break;
+
+        child = inheritance_graph.find(child)->second->get_parent();
+    }
+
+    if(child==parent)
+        return true;
+
+    return false;
+}
+
+Feature get_method_feature(Symbol method_name, Symbol child_class)
+{
+    std::map<Symbol, Class_>inheritance_graph = classtable->get_inheritance_graph();
+
+    Class_ current_class = inheritance_graph.find(child_class)->second;
+    Features features = current_class->get_features();
+
+    for(int i=features->first(); features->more(i); i=features->next(i))
+    {
+        Feature current_feature = features->nth(i);
+        if(current_feature->is_method() && current_feature->get_name()==method_name)
+            return current_feature;
+    }
+
+    if(child_class==No_class)
+    {
+        return NULL;
+    }
+
+    return get_method_feature(method_name, inheritance_graph.find(child_class)->second->get_parent());
+}
+
 Symbol assign_class::get_expression_type(Class_ cur_class)
 {
     Symbol *left_type = attribute_table->lookup(name);
@@ -379,14 +419,85 @@ Symbol assign_class::get_expression_type(Class_ cur_class)
 
 Symbol static_dispatch_class::get_expression_type(Class_ cur_class)
 {
-    type = No_type;
-    return No_type;
+    Symbol child_type = expr->get_expression_type(cur_class);
+    if(child_type==self)
+        child_type = cur_class->get_name();
+
+    Symbol calling_type = type_name;
+
+    if(!check_ancestor(child_type, calling_type))
+    {
+        classtable->semant_error(cur_class)<<"Expression type "<<child_type<<" does not conform to declared static dispatch type "<<calling_type<<".\n";
+        type = Object;
+        return Object;
+    }
+
+    Feature called_feature = get_method_feature(name, calling_type);
+    Formals called_formals = called_feature->get_formals();
+
+    //std::cout<<"here in "<<name<<endl;
+    if(called_formals->len()!=actual->len())
+    {
+        classtable->semant_error(cur_class)<<"Method "<<name<<" called with wrong number of arguments.\n";
+        type = Object;
+        return Object;
+    }
+
+    for(int i=actual->first(); actual->more(i); i=actual->next(i))
+    {
+        Expression current_expression = actual->nth(i);
+        Formal current_formal = called_formals->nth(i);
+
+        //std::cout<<"Actual: "<<current_expression->get_expression_type(cur_class)<<endl;
+        //std::cout<<"Formal: "<<current_formal->get_type()<<" "<<current_formal->get_name()<<endl;
+
+        if(current_expression->get_expression_type(cur_class)!=current_formal->get_type())
+        {
+            classtable->semant_error(cur_class)<<"In call of method "<<name<<", type "<<current_expression->get_expression_type(cur_class)<<" of parameter "<<current_formal->get_name()<<" does not conform to declared type "<<current_formal->get_type()<<".\n";
+            type = Object;
+            return Object;
+        }
+    }
+
+    type = called_feature->get_return_type();
+    return called_feature->get_return_type();
 }
 
 Symbol dispatch_class::get_expression_type(Class_ cur_class)
 {
-    type = No_type;
-    return No_type;
+    Symbol calling_type = expr->get_expression_type(cur_class);
+    if(calling_type==self)
+        calling_type = cur_class->get_name();
+
+    Feature called_feature = get_method_feature(name, calling_type);
+    Formals called_formals = called_feature->get_formals();
+
+    //std::cout<<"here in "<<name<<endl;
+    if(called_formals->len()!=actual->len())
+    {
+        classtable->semant_error(cur_class)<<"Method "<<name<<" called with wrong number of arguments.\n";
+        type = Object;
+        return Object;
+    }
+
+    for(int i=actual->first(); actual->more(i); i=actual->next(i))
+    {
+        Expression current_expression = actual->nth(i);
+        Formal current_formal = called_formals->nth(i);
+
+        //std::cout<<"Actual: "<<current_expression->get_expression_type(cur_class)<<endl;
+        //std::cout<<"Formal: "<<current_formal->get_type()<<" "<<current_formal->get_name()<<endl;
+
+        if(current_expression->get_expression_type(cur_class)!=current_formal->get_type())
+        {
+            classtable->semant_error(cur_class)<<"In call of method "<<name<<", type "<<current_expression->get_expression_type(cur_class)<<" of parameter "<<current_formal->get_name()<<" does not conform to declared type "<<current_formal->get_type()<<".\n";
+            type = Object;
+            return Object;
+        }
+    }
+
+    type = called_feature->get_return_type();
+    return called_feature->get_return_type();
 }
 
 Symbol cond_class::get_expression_type(Class_ cur_class)
