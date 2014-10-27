@@ -377,6 +377,11 @@ bool check_ancestor(Symbol child, Symbol parent)
 
 Feature get_method_feature(Symbol method_name, Symbol child_class)
 {
+    if(child_class==No_class)
+    {
+        return NULL;
+    }
+
     std::map<Symbol, Class_>inheritance_graph = classtable->get_inheritance_graph();
 
     Class_ current_class = inheritance_graph.find(child_class)->second;
@@ -389,11 +394,6 @@ Feature get_method_feature(Symbol method_name, Symbol child_class)
             return current_feature;
     }
 
-    if(child_class==No_class)
-    {
-        return NULL;
-    }
-
     return get_method_feature(method_name, inheritance_graph.find(child_class)->second->get_parent());
 }
 
@@ -403,6 +403,7 @@ Symbol assign_class::get_expression_type(Class_ cur_class)
     if(left_type==NULL)
     {
         classtable->semant_error(cur_class)<<"Assignment to undeclared variable "<<name<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -410,6 +411,7 @@ Symbol assign_class::get_expression_type(Class_ cur_class)
     if(*left_type!=right_type)
     {
         classtable->semant_error(cur_class)<<"Type "<<right_type<<" of assigned expression does not conform to declared type "<<*left_type<<" of identifier "<<name<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -420,7 +422,7 @@ Symbol assign_class::get_expression_type(Class_ cur_class)
 Symbol static_dispatch_class::get_expression_type(Class_ cur_class)
 {
     Symbol child_type = expr->get_expression_type(cur_class);
-    if(child_type==self)
+    if(child_type==SELF_TYPE)
         child_type = cur_class->get_name();
 
     Symbol calling_type = type_name;
@@ -433,6 +435,14 @@ Symbol static_dispatch_class::get_expression_type(Class_ cur_class)
     }
 
     Feature called_feature = get_method_feature(name, calling_type);
+
+    if(called_feature==NULL)
+    {
+        classtable->semant_error(cur_class)<<"Dispatch to undefined method "<<name<<".\n";
+        type = Object;
+        return Object;
+    }
+
     Formals called_formals = called_feature->get_formals();
 
     //std::cout<<"here in "<<name<<endl;
@@ -448,10 +458,11 @@ Symbol static_dispatch_class::get_expression_type(Class_ cur_class)
         Expression current_expression = actual->nth(i);
         Formal current_formal = called_formals->nth(i);
 
-        //std::cout<<"Actual: "<<current_expression->get_expression_type(cur_class)<<endl;
-        //std::cout<<"Formal: "<<current_formal->get_type()<<" "<<current_formal->get_name()<<endl;
+        Symbol current_type = current_expression->get_expression_type(cur_class);
+        if(current_type==SELF_TYPE)
+            current_type = cur_class->get_name();
 
-        if(current_expression->get_expression_type(cur_class)!=current_formal->get_type())
+        if(!(current_type==current_formal->get_type() || check_ancestor(current_type, current_formal->get_type())))
         {
             classtable->semant_error(cur_class)<<"In call of method "<<name<<", type "<<current_expression->get_expression_type(cur_class)<<" of parameter "<<current_formal->get_name()<<" does not conform to declared type "<<current_formal->get_type()<<".\n";
             type = Object;
@@ -459,17 +470,28 @@ Symbol static_dispatch_class::get_expression_type(Class_ cur_class)
         }
     }
 
-    type = called_feature->get_return_type();
-    return called_feature->get_return_type();
+    Symbol return_type = called_feature->get_return_type();
+    if(return_type==SELF_TYPE)
+        return_type = expr->get_expression_type(cur_class);
+
+    type = return_type;
+    return return_type;
 }
 
 Symbol dispatch_class::get_expression_type(Class_ cur_class)
 {
     Symbol calling_type = expr->get_expression_type(cur_class);
-    if(calling_type==self)
+    if(calling_type==SELF_TYPE)
         calling_type = cur_class->get_name();
 
     Feature called_feature = get_method_feature(name, calling_type);
+    if(called_feature==NULL)
+    {
+        classtable->semant_error(cur_class)<<"Dispatch to undefined method "<<name<<".\n";
+        type = Object;
+        return Object;
+    }
+
     Formals called_formals = called_feature->get_formals();
 
     if(called_formals->len()!=actual->len())
@@ -484,7 +506,11 @@ Symbol dispatch_class::get_expression_type(Class_ cur_class)
         Expression current_expression = actual->nth(i);
         Formal current_formal = called_formals->nth(i);
 
-        if(current_expression->get_expression_type(cur_class)!=current_formal->get_type())
+        Symbol current_type = current_expression->get_expression_type(cur_class);
+        if(current_type==SELF_TYPE)
+            current_type = cur_class->get_name();
+
+        if(!(current_type==current_formal->get_type() || check_ancestor(current_type, current_formal->get_type())))
         {
             classtable->semant_error(cur_class)<<"In call of method "<<name<<", type "<<current_expression->get_expression_type(cur_class)<<" of parameter "<<current_formal->get_name()<<" does not conform to declared type "<<current_formal->get_type()<<".\n";
             type = Object;
@@ -492,8 +518,12 @@ Symbol dispatch_class::get_expression_type(Class_ cur_class)
         }
     }
 
-    type = called_feature->get_return_type();
-    return called_feature->get_return_type();
+    Symbol return_type = called_feature->get_return_type();
+    if(return_type==SELF_TYPE)
+        return_type = expr->get_expression_type(cur_class);
+
+    type = return_type;
+    return return_type;
 }
 
 Symbol cond_class::get_expression_type(Class_ cur_class)
@@ -502,11 +532,16 @@ Symbol cond_class::get_expression_type(Class_ cur_class)
     if(condition_type!=Bool)
     {
         classtable->semant_error(cur_class)<<"Predicate of 'if' does not have type Bool.\n";
+        type = Object;
         return Object;   
     }
 
+    //cout<<then_exp->get_expression_type(cur_class);
+    //cout<<else_exp->get_expression_type(cur_class);
     Symbol return_type = get_least_common_ancestor_type(then_exp->get_expression_type(cur_class), else_exp->get_expression_type(cur_class));
+    //cout<<"here\n";
     type = return_type;
+    //type = else_exp->get_expression_type(cur_class);
     return type;
 }
 
@@ -516,6 +551,7 @@ Symbol loop_class::get_expression_type(Class_ cur_class)
     if(condition_type!=Bool)
     {
         classtable->semant_error(cur_class)<<"Predicate of 'if' does not have type Bool.\n";
+        type = Object;
         return Object;   
     }
 
@@ -528,6 +564,7 @@ Symbol loop_class::get_expression_type(Class_ cur_class)
 Symbol typcase_class::get_expression_type(Class_ cur_class)
 {
     std::map<Symbol, Class_>inheritance_graph = classtable->get_inheritance_graph();
+    Symbol return_type = NULL;
 
     expr->get_expression_type(cur_class);
 
@@ -543,6 +580,7 @@ Symbol typcase_class::get_expression_type(Class_ cur_class)
         if(inheritance_graph.find(current_type)==inheritance_graph.end())
         {
             classtable->semant_error(cur_class)<<"Class "<<current_type<<" of case branch is undefined.\n";
+            type = Object;
             return Object;  
         }
 
@@ -551,6 +589,7 @@ Symbol typcase_class::get_expression_type(Class_ cur_class)
             if(type_map[i]==current_type)
             {
                 classtable->semant_error(cur_class)<<"Duplicate branch "<<current_type<<" in case statement.\n";
+                type = Object;
                 return Object;
             }
         }
@@ -559,14 +598,13 @@ Symbol typcase_class::get_expression_type(Class_ cur_class)
 
         attribute_table->enterscope();
         attribute_table->addid(current_case->get_name(), new Symbol(current_type));
-        current_case->get_expression()->get_expression_type(cur_class);
+        Symbol temp_type = current_case->get_expression()->get_expression_type(cur_class);
+        if(return_type==NULL)
+            return_type = temp_type;
+        else
+            return_type = get_least_common_ancestor_type(return_type, temp_type);
         attribute_table->exitscope();
     }
-
-    Symbol return_type = type_map[0];
-
-    for(int i=1; i<type_map.size(); i++)
-        return_type = get_least_common_ancestor_type(return_type, type_map[i]);
 
     type = return_type;
     return return_type;
@@ -596,6 +634,7 @@ Symbol let_class::get_expression_type(Class_ cur_class)
     if(init->get_expression_type(cur_class)!=No_type && type_decl!=init->get_expression_type(cur_class))
     {
         classtable->semant_error(cur_class)<<"Inferred type "<<init->get_expression_type(cur_class)<<" of initialization of "<<identifier<<" does not conform to identifier's declared type "<<type_decl<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -611,6 +650,7 @@ Symbol plus_class::get_expression_type(Class_ cur_class)
     if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
     {
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" + "<<e2->get_expression_type(cur_class)<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -623,6 +663,7 @@ Symbol sub_class::get_expression_type(Class_ cur_class)
     if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
     {
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" - "<<e2->get_expression_type(cur_class)<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -635,6 +676,7 @@ Symbol mul_class::get_expression_type(Class_ cur_class)
     if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
     {
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" * "<<e2->get_expression_type(cur_class)<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -647,6 +689,7 @@ Symbol divide_class::get_expression_type(Class_ cur_class)
     if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
     {
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" / "<<e2->get_expression_type(cur_class)<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -659,6 +702,7 @@ Symbol neg_class::get_expression_type(Class_ cur_class)
     if(e1->get_expression_type(cur_class)!=Int)
     {
         classtable->semant_error(cur_class)<<"Argument of '~' has type "<<e1->get_expression_type(cur_class)<<" instead of Int.\n";
+        type = Object;
         return Object;
     }
 
@@ -671,6 +715,7 @@ Symbol lt_class::get_expression_type(Class_ cur_class)
     if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
     {
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" < "<<e2->get_expression_type(cur_class)<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -680,10 +725,15 @@ Symbol lt_class::get_expression_type(Class_ cur_class)
 
 Symbol eq_class::get_expression_type(Class_ cur_class)
 {
-    if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
+    Symbol first_type = e1->get_expression_type(cur_class), second_type = e2->get_expression_type(cur_class);
+    if(first_type==Int || first_type==Bool || first_type==Str || second_type==Int || second_type==Bool || second_type==Str)
     {
-        classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" = "<<e2->get_expression_type(cur_class)<<".\n";
-        return Object;
+        if(first_type!=second_type)
+        {
+            classtable->semant_error(cur_class)<<"Illegal comparison with a basic type.\n";
+            type = Object;
+            return Object;
+        }
     }
 
     type = Bool;
@@ -695,6 +745,7 @@ Symbol leq_class::get_expression_type(Class_ cur_class)
     if(e1->get_expression_type(cur_class)!=Int || e2->get_expression_type(cur_class)!=Int)
     {
         classtable->semant_error(cur_class)<<"non-Int arguments: "<<e1->get_expression_type(cur_class)<<" <= "<<e2->get_expression_type(cur_class)<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -707,6 +758,7 @@ Symbol comp_class::get_expression_type(Class_ cur_class)
     if(e1->get_expression_type(cur_class)!=Bool)
     {
         classtable->semant_error(cur_class)<<"Argument of 'not' has type "<<e1->get_expression_type(cur_class)<<" instead of Bool.\n";
+        type = Object;
         return Object;
     }
 
@@ -736,9 +788,14 @@ Symbol new__class::get_expression_type(Class_ cur_class)
 {
     std::map<Symbol, Class_>inheritance_graph = classtable->get_inheritance_graph();
 
-    if(inheritance_graph.find(type_name)==inheritance_graph.end())
+    Symbol new_type = type_name;
+    if(new_type==SELF_TYPE)
+        new_type = cur_class->get_name();
+
+    if(inheritance_graph.find(new_type)==inheritance_graph.end())
     {
-        classtable->semant_error(cur_class)<<"'new' used with undefined class "<<type_name<<".\n";
+        classtable->semant_error(cur_class)<<"'new' used with undefined class "<<new_type<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -770,6 +827,7 @@ Symbol object_class::get_expression_type(Class_ cur_class)
     if(attribute_table->lookup(name)==NULL)
     {
         classtable->semant_error(cur_class)<<"Undeclared identifier "<<name<<".\n";
+        type = Object;
         return Object;
     }
 
@@ -823,13 +881,21 @@ void method_class::check_feature(Class_ cur_class)
         classtable->semant_error(cur_class)<<"Inferred return type "<<body_type<<" of method a does not conform to declared return type "<<return_type<<".\n";
         return;
     }
+
+    if(return_type==SELF_TYPE && expr->get_expression_type(cur_class)!=SELF_TYPE)
+    {
+        classtable->semant_error(cur_class)<<"Inferred return type "<<expr->get_expression_type(cur_class)<<" of method a does not conform to declared return type "<<return_type<<".\n";
+        return;
+    }
 }
 
 void attr_class::check_feature(Class_ cur_class)
 {
     Symbol assigned_type = init->get_expression_type(cur_class);
+    if(assigned_type==SELF_TYPE)
+        assigned_type = cur_class->get_name();
 
-    if(assigned_type!=No_type && assigned_type!=type_decl)
+    if(!(assigned_type==No_type || assigned_type==type_decl || check_ancestor(assigned_type, type_decl)))
     {
         classtable->semant_error(cur_class)<<"Inferred type "<<assigned_type<<" of initialization of attribute "<<name<<" does not conform to declared type "<<type_decl<<".\n";
         return;
