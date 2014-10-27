@@ -561,22 +561,47 @@ Symbol string_const_class::get_expression_type(Class_ cur_class)
 
 Symbol new__class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    std::map<Symbol, Class_>inheritance_graph = classtable->get_inheritance_graph();
+
+    if(inheritance_graph.find(type_name)==inheritance_graph.end())
+    {
+        classtable->semant_error(cur_class)<<"'new' used with undefined class "<<type_name<<".\n";
+        return Object;
+    }
+
+    type = type_name;
+    return type_name;
 }
 
 Symbol isvoid_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    e1->get_expression_type(cur_class);
+    type = Bool;
+    return Bool;
 }
 
 Symbol no_expr_class::get_expression_type(Class_ cur_class)
 {
+    type = No_type;
     return No_type;
 }
 
 Symbol object_class::get_expression_type(Class_ cur_class)
 {
-    return No_type;
+    if(name==self)
+    {
+        type = SELF_TYPE;
+        return SELF_TYPE;
+    }
+
+    if(attribute_table->lookup(name)==NULL)
+    {
+        classtable->semant_error(cur_class)<<"Undeclared identifier "<<name<<".\n";
+        return Object;
+    }
+
+    type = *(attribute_table->lookup(name));
+    return type;
 }
 
 void method_class::check_feature(Class_ cur_class)
