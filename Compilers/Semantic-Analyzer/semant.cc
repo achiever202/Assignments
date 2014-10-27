@@ -523,6 +523,9 @@ Symbol dispatch_class::get_expression_type(Class_ cur_class)
         return_type = expr->get_expression_type(cur_class);
 
     type = return_type;
+    /*if(type==SELF_TYPE)
+        return cur_class->get_name();*/
+
     return return_type;
 }
 
@@ -536,12 +539,19 @@ Symbol cond_class::get_expression_type(Class_ cur_class)
         return Object;   
     }
 
-    //cout<<then_exp->get_expression_type(cur_class);
-    //cout<<else_exp->get_expression_type(cur_class);
-    Symbol return_type = get_least_common_ancestor_type(then_exp->get_expression_type(cur_class), else_exp->get_expression_type(cur_class));
-    //cout<<"here\n";
+    //cout<<"here"<<endl;
+    Symbol then_type = then_exp->get_expression_type(cur_class);
+    if(then_type==SELF_TYPE)
+        then_type = cur_class->get_name();
+
+    Symbol else_type = else_exp->get_expression_type(cur_class);
+    if(else_type==SELF_TYPE)
+        else_type = cur_class->get_name();
+    
+
+    Symbol return_type = get_least_common_ancestor_type(then_type, else_type);
+    //cout<<"final"<<endl;
     type = return_type;
-    //type = else_exp->get_expression_type(cur_class);
     return type;
 }
 
