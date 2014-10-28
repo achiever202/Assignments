@@ -843,7 +843,7 @@ Symbol let_class::get_expression_type(Class_ cur_class)
     }
 
     /* evaluating the type of the init expression, and checking if it conforms to the identifier. */
-    if(init->get_expression_type(cur_class)!=No_type && type_decl!=init->get_expression_type(cur_class))
+    if(!(init->get_expression_type(cur_class)==No_type || type_decl==init->get_expression_type(cur_class) || check_ancestor(init->get_expression_type(cur_class), type_decl)))
     {
         classtable->semant_error(cur_class)<<"Inferred type "<<init->get_expression_type(cur_class)<<" of initialization of "<<identifier<<" does not conform to identifier's declared type "<<type_decl<<".\n";
         type = Object;
