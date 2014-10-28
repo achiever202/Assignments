@@ -505,7 +505,7 @@ Symbol assign_class::get_expression_type(Class_ cur_class)
     Symbol right_type = expr->get_expression_type(cur_class);
 
     /* checking if the types match. */
-    if(*left_type!=right_type)
+    if(!(*left_type==right_type || check_ancestor(right_type, *left_type)))
     {
         classtable->semant_error(cur_class)<<"Type "<<right_type<<" of assigned expression does not conform to declared type "<<*left_type<<" of identifier "<<name<<".\n";
         type = Object;
@@ -513,8 +513,8 @@ Symbol assign_class::get_expression_type(Class_ cur_class)
     }
 
     /* returning the type of the assign expression. */
-    type = *left_type;
-    return *left_type;
+    type = right_type;
+    return right_type;
 }
 
 
@@ -1259,24 +1259,28 @@ void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class
     /* flag for error. */
     bool is_error=false;
 
-    
+    /* checking if the method is not redefined in the current scope. */
     if(function_table->probe(name)!=NULL)
     {
         classtable->semant_error(cur_class)<<"Method "<<name<<" is multiply defined.\n";
         return;
     }
 
+    /* checking when the method is overridden. */
     if(function_table->lookup(name)!= NULL)
     {
+        /* obtaining the feature associated with the defined method. */
         Feature inherited_feature = *(function_table->lookup(name));
         Formals inherited_formals = inherited_feature->get_formals();
 
+        /* checking the number of parameters. */
         if(formals->len()!=inherited_formals->len())
         {
             classtable->semant_error(cur_class)<<"Incompatible number of formal parameters in redefined method "<<name<<".\n";
             return;  
         }
 
+        /* checking each parameter. */
         for(int i=formals->first(); formals->more(i); i=formals->next(i))
         {
             Formal current_formal = formals->nth(i);
@@ -1290,6 +1294,7 @@ void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class
             }
         }
 
+        /* checking the return type. */
         if(return_type!=inherited_feature->get_return_type())
         {
             classtable->semant_error(cur_class)<<"In redefined method "<<name<<", return type "<<return_type<<" is different from original return type "<<inherited_feature->get_return_type()<<".\n";
@@ -1301,41 +1306,58 @@ void method_class::add_to_symbol_table(Feature current_feature, Class_ cur_class
 
 }
 
+
+/*
+ * This function adds the attribute to the corresponding symbol table.
+ */
 void attr_class::add_to_symbol_table(Feature current_feature, Class_ cur_class)
 {
+    /* checking if the attribute is redefined in the current scope. */
     if(attribute_table->probe(name)!=NULL)
     {
         classtable->semant_error(cur_class)<<"Attribute "<<name<<" is multiply defined in class.\n";
         return;
     }
 
+    /* checking if the attribute is redefined. */
     if(attribute_table->lookup(name)!=NULL)
     {
         classtable->semant_error(cur_class)<<"Attribute "<<name<<" is an attribute of an inherited class.\n";
     }
 
+    /* checking if the attribute has been named 'self'. */
     if(name==self)
     {
         classtable->semant_error(cur_class)<<"'self' cannot be the name of an attribute.\n";
         return;
     }
 
+    /* adding the attribute to the table. */
     attribute_table->addid(name, new Symbol(type_decl));
 }
 
+
+/*
+ * This function populates the symbol tables.
+ */
 void populate_symbol_tables(Class_ cur_class)
 {
+    /* obtaining the parent class. */
     Symbol parent = cur_class->get_parent();
+
+    /* if parent class is not No_class, populate features of parent class. */
     if(parent!=No_class)
     {
         populate_symbol_tables(classtable->get_inheritance_graph().find(parent)->second);
     }
 
+    /* enter a new scope and populate symbol tables with features of the current class. */
     attribute_table->enterscope();
     function_table->enterscope();
 
     Features features = cur_class->get_features();
 
+    /* iterating over features and adding each feature to the symbol table. */
     for(int i=features->first(); features->more(i); i=features->next(i))
     {
         Feature feature = features->nth(i);
@@ -1367,15 +1389,19 @@ void program_class::semant()
     cerr << "Compilation halted due to static semantic errors." << endl;
     exit(1);
     }
-    /* some semantic analysis code may go here */
+
+    /* iterating over the class list, and populating the symbol tables. */
     for(int i=classes->first(); classes->more(i); i=classes->next(i))
     {
         /* getting the current class. */
         Class_ cur_class = classes->nth(i);
+
+        /* creating new attribute and method tables. */
         function_table = new SymbolTable<Symbol, Feature>();
         attribute_table = new SymbolTable<Symbol, Symbol>();
         populate_symbol_tables(cur_class);
 
+        /* iterating over features and checing the feature for symantic errors. */
         Features features = cur_class->get_features();
         for(int i=features->first(); features->more(i); i=features->next(i))
         {
